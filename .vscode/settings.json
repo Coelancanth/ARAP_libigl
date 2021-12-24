@@ -1,9 +1,14 @@
 {
     "cSpell.words": [
+        "ARAP",
         "bary",
+        "cmake",
         "coor",
         "Eigen",
         "glfw",
+        "imgui",
+        "libigl",
+        "mkdir",
         "opengl",
         "unproject"
     ]
