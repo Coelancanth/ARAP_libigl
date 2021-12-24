@@ -8,6 +8,12 @@
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 #include <imgui/imgui.h>
+#include <igl/opengl/glfw/imgui/ImGuizmoPlugin.h>
+#include <GLFW/glfw3.h>
+#include <imgui/imgui_internal.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <imguizmo/ImGuizmo.h>
 
 Eigen::MatrixXd Vertices, Color;
 Eigen::MatrixXi Faces;
@@ -107,84 +113,91 @@ int main(int argc, char *argv[])
     
     // =================================================================
      // Attach a menu plugin
-  igl::opengl::glfw::imgui::ImGuiMenu menu;
-  viewer.plugins.push_back(&menu);
+    igl::opengl::glfw::imgui::ImGuiMenu menu;
+    viewer.plugins.push_back(&menu);
 
-  // Customize the menu
-  double doubleVariable = 0.1f; // Shared between two menus
+    // Customize the menu
+    double doubleVariable = 0.1f; // Shared between two menus
 
-  // Add content to the default menu window
-  menu.callback_draw_viewer_menu = [&]()
-  {
-    // Draw parent menu content
-    menu.draw_viewer_menu();
-
-    // Add new group
-    if (ImGui::CollapsingHeader("New Group", ImGuiTreeNodeFlags_DefaultOpen))
+    // Add content to the default menu window
+    menu.callback_draw_viewer_menu = [&]()
     {
-      // Expose variable directly ...
-      ImGui::InputDouble("double", &doubleVariable, 0, 0, "%.4f");
+        // Draw parent menu content
+        menu.draw_viewer_menu();
 
-      // ... or using a custom callback
-      static bool boolVariable = true;
-      if (ImGui::Checkbox("bool", &boolVariable))
-      {
-        // do something
-        std::cout << "boolVariable: " << std::boolalpha << boolVariable << std::endl;
-      }
+        // Add new group
+        if (ImGui::CollapsingHeader("New Group", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            // Expose variable directly ...
+            ImGui::InputDouble("double", &doubleVariable, 0, 0, "%.4f");
 
-      // Expose an enumeration type
-      enum Orientation { Up=0, Down, Left, Right };
-      static Orientation dir = Up;
-      ImGui::Combo("Direction", (int *)(&dir), "Up\0Down\0Left\0Right\0\0");
+            // ... or using a custom callback
+            static bool boolVariable = true;
+            if (ImGui::Checkbox("bool", &boolVariable))
+            {
+                // do something
+                std::cout << "boolVariable: " << std::boolalpha << boolVariable << std::endl;
+            }
 
-      // We can also use a std::vector<std::string> defined dynamically
-      static int num_choices = 3;
-      static std::vector<std::string> choices;
-      static int idx_choice = 0;
-      if (ImGui::InputInt("Num letters", &num_choices))
-      {
-        num_choices = std::max(1, std::min(26, num_choices));
-      }
-      if (num_choices != (int) choices.size())
-      {
-        choices.resize(num_choices);
-        for (int i = 0; i < num_choices; ++i)
-          choices[i] = std::string(1, 'A' + i);
-        if (idx_choice >= num_choices)
-          idx_choice = num_choices - 1;
-      }
-      ImGui::Combo("Letter", &idx_choice, choices);
+            // Expose an enumeration type
+            enum Orientation { Up=0, Down, Left, Right };
+            static Orientation dir = Up;
+            ImGui::Combo("Direction", (int *)(&dir), "Up\0Down\0Left\0Right\0\0");
 
-      // Add a button
-      if (ImGui::Button("Print Hello", ImVec2(-1,0)))
-      {
-        std::cout << "Hello\n";
-      }
-    }
-  };
+            // We can also use a std::vector<std::string> defined dynamically
+            static int num_choices = 3;
+            static std::vector<std::string> choices;
+            static int idx_choice = 0;
+            if (ImGui::InputInt("Num letters", &num_choices))
+            {
+                num_choices = std::max(1, std::min(26, num_choices));
+            }
+            if (num_choices != (int) choices.size())
+            {
+                choices.resize(num_choices);
+                for (int i = 0; i < num_choices; ++i)
+                choices[i] = std::string(1, 'A' + i);
+                if (idx_choice >= num_choices)
+                idx_choice = num_choices - 1;
+            }
+            ImGui::Combo("Letter", &idx_choice, choices);
 
-  // Draw additional windows
-  menu.callback_draw_custom_window = [&]()
-  {
-    // Define next window position + size
-    ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(200, 160), ImGuiCond_FirstUseEver);
-    ImGui::Begin(
-        "New Window", nullptr,
-        ImGuiWindowFlags_NoSavedSettings
-    );
+            // Usages
+            if (ImGui::Button("Print Usage", ImVec2(-1,0)))
+            {
+                std::cout << R"(
+                    Q,q               Switch to [place anchor points] mode
+                    W,w               Switch to [place handle points] mode
+                    D,d               Switch to [deformation] mode
+                    U,u               Update deformation (run another iteration of solver)
+                    Crtl+Z            Undo
+                    Ctrl+Shift+Z      Redo
+                )";
+            }
+        }
+    };
 
-    // Expose the same variable directly ...
-    ImGui::PushItemWidth(-80);
-    ImGui::DragScalar("double", ImGuiDataType_Double, &doubleVariable, 0.1, 0, 0, "%.4f");
-    ImGui::PopItemWidth();
+    //// Draw additional windows
+    //menu.callback_draw_custom_window = [&]()
+    //{
+        //// Define next window position + size
+        //ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 10), ImGuiCond_FirstUseEver);
+        //ImGui::SetNextWindowSize(ImVec2(200, 160), ImGuiCond_FirstUseEver);
+        //ImGui::Begin(
+            //"New Window", nullptr,
+            //ImGuiWindowFlags_NoSavedSettings
+        //);
 
-    static std::string str = "bunny";
-    ImGui::InputText("Name", str);
+        //// Expose the same variable directly ...
+        //ImGui::PushItemWidth(-80);
+        //ImGui::DragScalar("double", ImGuiDataType_Double, &doubleVariable, 0.1, 0, 0, "%.4f");
+        //ImGui::PopItemWidth();
 
-    ImGui::End();
-  };
+        //static std::string str = "bunny";
+        //ImGui::InputText("Name", str);
+
+        //ImGui::End();
+    //};
   
 
 
@@ -263,6 +276,7 @@ int main(int argc, char *argv[])
         return false;
     };
     
+    // TODO: implement ImGuizmo 
     viewer.callback_mouse_move = [&](igl::opengl::glfw::Viewer &, int, int) -> bool
     {
         //apply_displacement(last_mouse, closet_pt_id, state);
@@ -301,6 +315,54 @@ int main(int argc, char *argv[])
     // =================================================================
     // keyboard interactions
     // =================================================================
+    
+    viewer.callback_key_pressed = [&](igl::opengl::glfw::Viewer &, unsigned int key, int mod)
+    {
+        switch (key)
+        {
+            // Switch modes
+            case 'Q':
+            case 'q':
+            {
+                mode = PLACING_ANCHORS;
+                break;
+            }
+            case 'W':
+            case 'w':
+            {
+                mode = PLACING_HANDLES;
+                break;
+            }
+            case 'D':
+            case 'd':
+            {
+                mode = DEFORM;
+            }
+            // Will just trigger a update
+            case 'U':
+            case 'u':
+            {
+                break;
+            }
+            // TODO: deformation mode, implement after algorithm
+            default:
+            return false;
+        }
+        update();
+        return true;
+    };
+    
+    // Undo Management
+    viewer.callback_key_down = [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) -> bool 
+    {
+        if (key == 'Z' && (mod & GLFW_MOD_SUPER))
+        {
+            (mod & GLFW_MOD_SHIFT) ? redo() : undo();
+            update();
+            return true;
+        }
+        return false;
+    };
     
     
     
