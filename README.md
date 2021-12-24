@@ -1,5 +1,9 @@
 # Dependencies
 
+Install spdlog via package managers:
+- Ubuntu ```sudo apt install libspdlog-dev```
+- Windows ```vcpkg install spdlog```
+
 Download libigl
 ```
     git clone https://github.com/libigl/libigl.git
