@@ -2,10 +2,13 @@
     "cSpell.words": [
         "ARAP",
         "bary",
+        "bugprone",
         "cmake",
         "coor",
+        "cppcoreguidelines",
         "Eigen",
         "glfw",
+        "Guizmo",
         "imgui",
         "libigl",
         "mkdir",
