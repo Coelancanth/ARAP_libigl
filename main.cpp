@@ -1,5 +1,6 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include "spdlog/spdlog.h"
+#include "spdlog/fmt/ostr.h"
 #include <igl/project.h>
 #include <igl/unproject.h>
 #include <igl/unproject_onto_mesh.h>
@@ -16,8 +17,6 @@
 #include <imguizmo/ImGuizmo.h>
 #include "precompute.h"
 
-Eigen::MatrixXd Vertices, Color;
-Eigen::MatrixXi Faces;
 
 
 enum class Mode
@@ -28,7 +27,13 @@ enum class Mode
 };
 struct State
 {
-    Eigen::MatrixXd anchors, handles;
+    Eigen::MatrixXd anchors;
+    Eigen::MatrixXd handles;
+    // used for adding constraints in a least-square way. (see O.Sorkine, Differential Representations for Mesh Processing, p.4)
+    Eigen::MatrixXd anchor_constraints;
+    Eigen::MatrixXd handle_constraints;
+    bool isTest = true;
+    
     Mode mode = Mode::kPlacingAnchors;
     // bool placing_anchors = true;
     // bool placing_handles = false;
@@ -54,25 +59,38 @@ struct State
 int main(int argc, char *argv[])
 {
 
-    // ================================================================
-    // DataIO/ Variables
-    // mouse position, used for picking vertices
-    // ================================================================
-    Eigen::RowVector3f last_mouse;
+    /* -------------------------------------------------------------------------- */
+    /*                                  Variables                                 */
+    /* -------------------------------------------------------------------------- */
+    Eigen::MatrixXd Vertices;
+    Eigen::MatrixXd Color;
+    Eigen::MatrixXi Faces;
+    const int kPointSize = 10;
     long closet_pt_id = -1;
+    Eigen::RowVector3f last_mouse;
+
+
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Data IO                                  */
+    /* -------------------------------------------------------------------------- */
     //igl::readOFF("../meshes/bar1.off", Vertices, Faces);
     igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
-    viewer.data().point_size = 10;
+    viewer.data().point_size = kPointSize;
+    
+    // ANCHOR: precompute 
+    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
     
 
-    // =================================================================
-    // Lambda functions
-    // =================================================================
+    /* -------------------------------------------------------------------------- */
+    /*                              Lambda functions                              */
+    /* -------------------------------------------------------------------------- */
 
     // Undo Management
-    std::stack<State> undo_stack, redo_stack;
+    std::stack<State> undo_stack;
+    std::stack<State> redo_stack;
 
     const auto push_undo = [&](State &_state = state) {
         undo_stack.push(_state);
@@ -121,8 +139,9 @@ int main(int argc, char *argv[])
         viewer.data().compute_normals();
     };
 
-    // =================================================================
-    // Attach a menu plugin
+    /* -------------------------------------------------------------------------- */
+    /*                            Menu plugin                                     */
+    /* -------------------------------------------------------------------------- */
     igl::opengl::glfw::imgui::ImGuiMenu menu;
     viewer.plugins.push_back(&menu);
 
@@ -192,9 +211,36 @@ int main(int argc, char *argv[])
             // Print useful information for debugging
             if (ImGui::Button("Print Information", ImVec2(-1, 0)))
             {
-                Eigen::SparseMatrix<double> L_s;
-                L_s = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
-                std::cout << Eigen::MatrixXd(L_s) << std::endl;
+                if (state.isTest == true)
+                {
+                     //Eigen::Matrix4f m;
+                     //m << 1, 2, 3, 4,
+                         //5, 6, 7, 8,
+                         //9, 10,11,12,
+                         //13,14,15,16;
+                     //spdlog::info("m is:\n{}", m);
+                     //spdlog::info("m.middleRows(1,2) is:\n{}", m.middleRows(1, 2));
+
+                    spdlog::info("state.anchor_constraint:\n{}", state.anchor_constraints);
+                    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+                    Eigen::MatrixXd L_hat;
+                    lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+                    
+                    L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
+                    spdlog::info("L_hat:\n{}", L_hat);
+                    
+
+                }
+                
+                //Eigen::SparseMatrix<double> L;
+
+                //spdlog::info("L is {}", Eigen::MatrixXd(lp.first));
+                //spdlog::info("L_s is {}", lp.second);
+
+                //std::cout << Eigen::MatrixXd(lp.first) << std::endl;
+                //spdlog::info("state.anchors: {}", state.anchors);
+                //spdlog::info("state.anchor_constraint: {}", state.anchor_constraints);
+
                 //char const *ModeTypes[] = {"Placing Anchors", "Placing Handles", "Deformation"};
                 //spdlog::info("Current Mode is: {} ", ModeTypes[state.mode]);
                 //spdlog::info("Number of Anchors: {}", state.anchors.rows());
@@ -224,9 +270,9 @@ int main(int argc, char *argv[])
     // ImGui::End();
     //};
 
-    // =================================================================
-    // mouse interaction
-    // =================================================================
+    /* -------------------------------------------------------------------------- */
+    /*                              Mouse Interaction                             */
+    /* -------------------------------------------------------------------------- */
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer &, int, int) -> bool {
         last_mouse = Eigen::RowVector3f(viewer.current_mouse_x, viewer.core().viewport(3) - viewer.current_mouse_y, 0);
         // TODO: lasso selection, idea -> select all vetrices in the range of [x,y]
@@ -241,7 +287,9 @@ int main(int argc, char *argv[])
             {
                 long max_coeff;
                 bary_coor.maxCoeff(&max_coeff);
-                Eigen::RowVector3d new_coor = Vertices.row(Faces(face_id, max_coeff));
+                // NOTE: get vertex idx here
+                int idx_v = Faces(face_id, max_coeff);
+                Eigen::RowVector3d new_coor = Vertices.row(idx_v);
 
                 // TODO: invoke ImGuizmo
                 if (state.mode == Mode::kPlacingAnchors)
@@ -253,7 +301,15 @@ int main(int argc, char *argv[])
                         state.anchors.conservativeResize(state.anchors.rows() + 1, 3);
                         // Snap to closest vertex on hit face
                         state.anchors.row(state.anchors.rows() - 1) = new_coor;
-                        // spdlog::info("add {} to the anchors", new_coor);
+                        
+                        
+                        Eigen::MatrixXd ac = Eigen::MatrixXd::Zero(1, lp.second.cols());
+                        ac.coeffRef(0, idx_v) = 1;
+                        
+                        state.anchor_constraints.conservativeResize(state.anchor_constraints.rows()+1, ac.cols());
+                        state.anchor_constraints.row(state.anchor_constraints.rows()-1) = ac;
+                        //spdlog::info("anchors:\n{} ", state.anchors);
+                        //spdlog::info("anchor_constraint:\n{}", state.anchor_constraints);
                     }
                 }
 
@@ -267,7 +323,13 @@ int main(int argc, char *argv[])
                         state.handles.conservativeResize(state.handles.rows() + 1, 3);
                         // Snap to closest vertex on hit face
                         state.handles.row(state.handles.rows() - 1) = new_coor;
-                        // spdlog::info("add {} to the handles", new_coor);
+
+                        Eigen::MatrixXd hc = Eigen::MatrixXd::Zero(1, lp.second.cols());
+                        hc.coeffRef(0, idx_v) = 1;
+                        
+                        state.handle_constraints.conservativeResize(state.handle_constraints.rows()+1, hc.cols());
+                        state.handle_constraints.row(state.handle_constraints.rows()-1) = hc;
+
                     }
                 }
                 
@@ -319,9 +381,11 @@ int main(int argc, char *argv[])
         closet_pt_id = -1;
         return false;
     };
-    // =================================================================
-    // keyboard interactions
-    // =================================================================
+    
+
+    /* -------------------------------------------------------------------------- */
+    /*                            Keyboard Interaction                            */
+    /* -------------------------------------------------------------------------- */
 
     viewer.callback_key_pressed = [&](igl::opengl::glfw::Viewer &, unsigned int key, int mod) {
         switch (key)
@@ -343,6 +407,7 @@ int main(int argc, char *argv[])
         case 'e': {
             state.mode = Mode::kDeform;
             std::cout << "mode: [Deformation]";
+            // TODO: implement pre_computation here
             break;
         }
         // Will just trigger a update
