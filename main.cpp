@@ -73,19 +73,24 @@ int main(int argc, char *argv[])
     const int kPointSize = 10;
     long closet_pt_id = -1;
     Eigen::RowVector3f last_mouse;
+    Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver;
+    Eigen::SparseMatrix<double, Eigen::RowMajor> L_hat;
+    Eigen::SparseMatrix<double, Eigen::RowMajor> L_hat_T;
+    Eigen::MatrixXd rhs;
+    
+    Eigen::MatrixXd Vertices_new;
 
 
 
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    //igl::readOFF("../meshes/bar1.off", Vertices, Faces);
-    igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
+    igl::readOFF("../meshes/bar1.off", Vertices, Faces);
+    //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
     viewer.data().point_size = kPointSize;
     
-    // ANCHOR: precompute 
     LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
     
 
@@ -129,12 +134,16 @@ int main(int argc, char *argv[])
         const Eigen::RowVector3d blue(0.2, 0.3, 0.8);
         const Eigen::RowVector3d green(0.2, 0.6, 0.3);
         const Eigen::RowVector3d grey(0.8, 0.8, 0.8);
-        // if (mode == PLACING_ANCHORS)
-        //{
-        // viewer.data().set_vertices(Vertices);
-        // viewer.data().set_colors(blue);
-        // viewer.data().set_points(state.anchors, orange);
-        //}
+        
+        if (state.mode == Mode::kDeform)
+        {
+            long n_handle = state.handles.rows();
+            rhs.bottomRows(n_handle) = state.handles;
+            //spdlog::info("n_lhs: {}, n_rhs: {}", solver.rows(), rhs.rows());
+            Eigen::MatrixXd rhs_tmp = L_hat_T * rhs;
+
+            Vertices = solver.solve(rhs_tmp);
+        }
 
         viewer.data().set_vertices(Vertices);
         viewer.data().set_colors(grey);
@@ -232,23 +241,8 @@ int main(int argc, char *argv[])
                     lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
                     
                     L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
-                    
-
+                    spdlog::info("handles:\n{}", state.handles);
                 }
-                
-                //Eigen::SparseMatrix<double> L;
-
-                //spdlog::info("L is {}", Eigen::MatrixXd(lp.first));
-                //spdlog::info("L_s is {}", lp.second);
-
-                //std::cout << Eigen::MatrixXd(lp.first) << std::endl;
-                //spdlog::info("state.anchors: {}", state.anchors);
-                //spdlog::info("state.anchor_constraint: {}", state.anchor_constraints);
-
-                //char const *ModeTypes[] = {"Placing Anchors", "Placing Handles", "Deformation"};
-                //spdlog::info("Current Mode is: {} ", ModeTypes[state.mode]);
-                //spdlog::info("Number of Anchors: {}", state.anchors.rows());
-                //spdlog::info("Number of Handles: {}", state.handles.rows());
             }
         }
     };
@@ -307,14 +301,6 @@ int main(int argc, char *argv[])
                         state.anchors.row(state.anchors.rows() - 1) = new_coor;
                         
                         state.anchor_constraints.emplace_back(state.anchors.rows() - 1, idx_v, 1);
-
-                        //Eigen::MatrixXd ac = Eigen::MatrixXd::Zero(1, lp.second.cols());
-                        //ac.coeffRef(0, idx_v) = 1;
-                        
-                        //state.anchor_constraints.conservativeResize(state.anchor_constraints.rows()+1, ac.cols());
-                        //state.anchor_constraints.row(state.anchor_constraints.rows()-1) = ac;
-                        //spdlog::info("anchors:\n{} ", state.anchors);
-                        //spdlog::info("anchor_constraint:\n{}", state.anchor_constraints);
                     }
                 }
 
@@ -330,12 +316,6 @@ int main(int argc, char *argv[])
                         state.handles.row(state.handles.rows() - 1) = new_coor;
 
                         state.handle_constraints.emplace_back(state.handles.rows() - 1, idx_v, 1);
-                        //Eigen::MatrixXd hc = Eigen::MatrixXd::Zero(1, lp.second.cols());
-                        //hc.coeffRef(0, idx_v) = 1;
-                        
-                        //state.handle_constraints.conservativeResize(state.handle_constraints.rows()+1, hc.cols());
-                        //state.handle_constraints.row(state.handle_constraints.rows()-1) = hc;
-
                     }
                 }
                 
@@ -347,7 +327,7 @@ int main(int argc, char *argv[])
         {
             // save closet point's coordinates for later use of computing displacement
             // return save_closest_handle_point(last_mouse);
-            // TO_FIX: only works if control_pts != empty
+            // FIXME: only works if control_pts != empty
             Eigen::MatrixXf control_pts;
             igl::project(Eigen::MatrixXf(state.handles.cast<float>()), viewer.core().view, viewer.core().proj,
                          viewer.core().viewport, control_pts);
@@ -400,33 +380,52 @@ int main(int argc, char *argv[])
         case 'Q':
         case 'q': {
             state.mode = Mode::kPlacingAnchors;
-            std::cout << "mode: [Placing Anchors]";
+            spdlog::info("Mode: [Placing Anchors]");
             break;
         }
         case 'W':
         case 'w': {
             state.mode = Mode::kPlacingHandles;
-            std::cout << "mode: [Placing Handles]";
+            spdlog::info("Mode: [Placing Handles]");
             break;
         }
         case 'E':
         case 'e': {
             state.mode = Mode::kDeform;
-            spdlog::info("Deformation Mode");
-            // TODO: implement pre_computation here
-            //
+            spdlog::info("Mode: [Deformation]");
+            spdlog::info("Precomputation Begins");
+            
+            // Precomputation for naive laplacian
             LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
-            Eigen::MatrixXd L_hat;
             lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+            // rhs, laplacian coordinates
+            Eigen::MatrixXd delta = lp.first * Vertices;
+            long n_vertice = delta.rows();
+            long n_anchor = state.anchors.rows();
+            long n_handle = state.handles.rows();
+            rhs.conservativeResize(n_vertice, 3);
+            rhs.topRows(n_vertice) = delta;
+            rhs.conservativeResize(n_vertice + n_anchor, 3);
+            rhs.bottomRows(n_anchor) = state.anchors;
+            //spdlog::info("rhs:\n{}", rhs);
+            rhs.conservativeResize(rhs.rows() + n_handle, 3);
+
+            
+            
             L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
+            L_hat_T = Eigen::SparseMatrix<double, Eigen::RowMajor>(L_hat.transpose());
+            // Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(L_hat.transpose()) * L_hat;
+            Eigen::SparseMatrix<double> M = L_hat_T * L_hat;
+
+            
 
             // Cholesky decomposition, only need to do once, before entering into deformation mode.
-            Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver;
-            solver.compute(L_hat.sparseView());
+            solver.compute(M);
             if (solver.info() != Eigen::Success)
             {
                 throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
             }
+            spdlog::info("Precomputation Ends");
 
             break;
         }
