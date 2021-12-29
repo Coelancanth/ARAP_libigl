@@ -391,10 +391,12 @@ int main(int argc, char *argv[])
         }
         case 'E':
         case 'e': {
+            // TODO: Encapsulate them into function
             state.mode = Mode::kDeform;
             spdlog::info("Mode: [Deformation]");
             spdlog::info("Precomputation Begins");
             
+            // TODO: Generating matrix is too slow now, need optimization.
             // Precomputation for naive laplacian
             LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
             lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
@@ -420,12 +422,15 @@ int main(int argc, char *argv[])
             
 
             // Cholesky decomposition, only need to do once, before entering into deformation mode.
+            spdlog::info("Factorization Begins");
             solver.compute(M);
+            spdlog::info("Factorization Ends");
             if (solver.info() != Eigen::Success)
             {
                 throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
             }
             spdlog::info("Precomputation Ends");
+            return true;
 
             break;
         }
@@ -434,7 +439,6 @@ int main(int argc, char *argv[])
         case 'u': {
             break;
         }
-        // TODO: deformation mode, implement after algorithm
         default:
             return false;
         }

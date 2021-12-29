@@ -9,7 +9,7 @@ LaplacianPair calculate_laplacian_matrix(const Eigen::MatrixXd &vertices, const 
 {
     Eigen::SparseMatrix<double> L_s;
 
-    if (weight_type == WeightType::UNIFORM_WEIGHT)
+    if (weight_type == WeightType::kUniformWeight)
     {
         Eigen::SparseMatrix<double> A;
         igl::adjacency_matrix(faces, A);

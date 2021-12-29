@@ -16,8 +16,8 @@ using Triplet = Eigen::Triplet<double>;
 
 enum class WeightType
 {
-    UNIFORM_WEIGHT = 0,
-    COTAN_WEIGHT = 1
+    kUniformWeight = 0,
+    kCotanWeight = 1
 };
 
 // NOTE: should use template for handling different matrix types
