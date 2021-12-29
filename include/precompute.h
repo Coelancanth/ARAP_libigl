@@ -7,9 +7,11 @@
 #include <igl/diag.h>
 #include <igl/sum.h>
 #include <utility>
+#include <vector>
 
 // <L, L_s>
 using LaplacianPair = std::pair<Eigen::MatrixXd, Eigen::SparseMatrix<double>>;
+using Triplet = Eigen::Triplet<double>;
 
 
 enum class WeightType
@@ -36,6 +38,6 @@ enum class WeightType
 LaplacianPair calculate_laplacian_matrix(const Eigen::MatrixXd &vertices, const Eigen::MatrixXi &faces,
                                 const WeightType &weight_type);
 
-Eigen::MatrixXd add_constraints(const Eigen::SparseMatrix<double> &L_s, const Eigen::MatrixXd &anchor_constraint, const Eigen::MatrixXd &handle_constraint);
+Eigen::SparseMatrix<double, Eigen::RowMajor> add_constraints(const Eigen::SparseMatrix<double> &L_s, std::vector<Triplet> &anchor_constraint, std::vector<Triplet> &handle_constraint);
 
 #endif //

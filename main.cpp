@@ -16,6 +16,9 @@
 #include <imgui_impl_opengl3.h>
 #include <imguizmo/ImGuizmo.h>
 #include "precompute.h"
+#include <stdexcept>
+#include <Eigen/SparseCholesky>
+
 
 
 
@@ -30,8 +33,10 @@ struct State
     Eigen::MatrixXd anchors;
     Eigen::MatrixXd handles;
     // used for adding constraints in a least-square way. (see O.Sorkine, Differential Representations for Mesh Processing, p.4)
-    Eigen::MatrixXd anchor_constraints;
-    Eigen::MatrixXd handle_constraints;
+    std::vector<Triplet> anchor_constraints;
+    std::vector<Triplet> handle_constraints;
+    //Eigen::MatrixXd anchor_constraints;
+    //Eigen::MatrixXd handle_constraints;
     bool isTest = true;
     
     Mode mode = Mode::kPlacingAnchors;
@@ -221,13 +226,12 @@ int main(int argc, char *argv[])
                      //spdlog::info("m is:\n{}", m);
                      //spdlog::info("m.middleRows(1,2) is:\n{}", m.middleRows(1, 2));
 
-                    spdlog::info("state.anchor_constraint:\n{}", state.anchor_constraints);
+                    //spdlog::info("state.anchor_constraint:\n{}", state.anchor_constraints);
+                    Eigen::SparseMatrix<double, Eigen::RowMajor> L_hat;
                     LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
-                    Eigen::MatrixXd L_hat;
                     lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
                     
                     L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
-                    spdlog::info("L_hat:\n{}", L_hat);
                     
 
                 }
@@ -302,12 +306,13 @@ int main(int argc, char *argv[])
                         // Snap to closest vertex on hit face
                         state.anchors.row(state.anchors.rows() - 1) = new_coor;
                         
+                        state.anchor_constraints.emplace_back(state.anchors.rows() - 1, idx_v, 1);
+
+                        //Eigen::MatrixXd ac = Eigen::MatrixXd::Zero(1, lp.second.cols());
+                        //ac.coeffRef(0, idx_v) = 1;
                         
-                        Eigen::MatrixXd ac = Eigen::MatrixXd::Zero(1, lp.second.cols());
-                        ac.coeffRef(0, idx_v) = 1;
-                        
-                        state.anchor_constraints.conservativeResize(state.anchor_constraints.rows()+1, ac.cols());
-                        state.anchor_constraints.row(state.anchor_constraints.rows()-1) = ac;
+                        //state.anchor_constraints.conservativeResize(state.anchor_constraints.rows()+1, ac.cols());
+                        //state.anchor_constraints.row(state.anchor_constraints.rows()-1) = ac;
                         //spdlog::info("anchors:\n{} ", state.anchors);
                         //spdlog::info("anchor_constraint:\n{}", state.anchor_constraints);
                     }
@@ -324,11 +329,12 @@ int main(int argc, char *argv[])
                         // Snap to closest vertex on hit face
                         state.handles.row(state.handles.rows() - 1) = new_coor;
 
-                        Eigen::MatrixXd hc = Eigen::MatrixXd::Zero(1, lp.second.cols());
-                        hc.coeffRef(0, idx_v) = 1;
+                        state.handle_constraints.emplace_back(state.handles.rows() - 1, idx_v, 1);
+                        //Eigen::MatrixXd hc = Eigen::MatrixXd::Zero(1, lp.second.cols());
+                        //hc.coeffRef(0, idx_v) = 1;
                         
-                        state.handle_constraints.conservativeResize(state.handle_constraints.rows()+1, hc.cols());
-                        state.handle_constraints.row(state.handle_constraints.rows()-1) = hc;
+                        //state.handle_constraints.conservativeResize(state.handle_constraints.rows()+1, hc.cols());
+                        //state.handle_constraints.row(state.handle_constraints.rows()-1) = hc;
 
                     }
                 }
@@ -406,8 +412,22 @@ int main(int argc, char *argv[])
         case 'E':
         case 'e': {
             state.mode = Mode::kDeform;
-            std::cout << "mode: [Deformation]";
+            spdlog::info("Deformation Mode");
             // TODO: implement pre_computation here
+            //
+            LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+            Eigen::MatrixXd L_hat;
+            lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+            L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
+
+            // Cholesky decomposition, only need to do once, before entering into deformation mode.
+            Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver;
+            solver.compute(L_hat.sparseView());
+            if (solver.info() != Eigen::Success)
+            {
+                throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
+            }
+
             break;
         }
         // Will just trigger a update
