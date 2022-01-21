@@ -27,7 +27,7 @@ void arapDeform::setConstraints(const std::vector<int> &fixedPt, const std::vect
 
 }
 
-Eigen::MatrixXd arapDeform::compute(Eigen::MatrixXd &targetmesh, Eigen::MatrixXd initialGuess) {
+Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess) {
     // how to guess though?
     std::vector<Eigen::Matrix3d> rot = rotationUpdateStep(
             vertices, faces, adjList, initialGuess, wt
@@ -45,7 +45,7 @@ Eigen::MatrixXd arapDeform::compute(Eigen::MatrixXd &targetmesh, Eigen::MatrixXd
                                  adjList, rot, pos, wt);
         stepcount += 1;
 
-        if (stepcount >= 50)
+        if (stepcount >= 10)
         {
             converged = true;
             // TODO: stopping condition?

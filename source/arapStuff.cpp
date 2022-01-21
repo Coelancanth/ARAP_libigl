@@ -3,6 +3,7 @@
 //
 
 #include "arapStuff.h"
+#include "iostream"
 
 MatrixLConstructor::MatrixLConstructor(
                                        const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
@@ -23,11 +24,15 @@ MatrixLConstructor::MatrixLConstructor(
             const std::vector<int> neighbors = adjList[vi];
             for (int nei: neighbors)
             {
+
+
                 laplacianMat(vi, nei) = -wt.getWeight(vi, nei);
-                laplacianMat(vi, nei) += wt.getWeight(vi, nei);
+                laplacianMat(vi, vi) += wt.getWeight(vi, nei);
 
             }
         }
+
+        std::cout <<"Lap Matrix: before constr" << std::endl << laplacianMat << std::endl;
 
 
     };
@@ -40,10 +45,13 @@ void MatrixLConstructor::setFixedPoints(const std::vector<int> & fixedPts)
         laplacianMat.row(vi).setZero();
         laplacianMat(vi, vi) = 1;
     }
+    std::cout <<"Lap Matrix: after constr" << laplacianMat << std::endl;
+
 }
 
 Eigen::ColPivHouseholderQR< Eigen::MatrixXd > MatrixLConstructor::getQR()
 {
+    std::cout <<"Lap Matrix: {}" << laplacianMat << std::endl;
     return laplacianMat.colPivHouseholderQr();
 }
 
@@ -65,11 +73,14 @@ MatrixbConstructor::MatrixbConstructor(const Eigen::MatrixXd& vertices, const Ei
         {
             double wij = wt.getWeight(vi, nei);
             Eigen::Matrix3d RiRjT = (rotMatrices[vi] + rotMatrices[nei]).transpose();
-            Eigen::Vector3d pipjT = (positions.row(vi) - positions.row(nei)); // should make a row vector of 1x3...
-            assert(pipjT.cols() == 3&& "pipj col");
-            assert(pipjT.rows() == 1&& "pipj row");
+            Eigen::Matrix<double, 1,3> pipjT = (positions.row(vi) - positions.row(nei)); // should make a row vector of 1x3...
 
-            bMat.col(nei) += wij / 2 * (pipjT * RiRjT);
+            //spdlog::info("bMat row nei: {}x{}", bMat.row(nei).rows(),bMat.col(nei).cols() );
+            Eigen::Matrix<double, 1, 3> rhs = wij / 2 * (pipjT * RiRjT);
+            //spdlog::info("bMat rhs: {}x{}", rhs.rows(),rhs.cols() );
+
+
+            bMat.row(nei) += rhs;
 
 
         }
@@ -111,10 +122,10 @@ Eigen::Matrix3d rotationUpdateSingleVertex(int vertex,
     for (int vi: adjList[vertex])
     {
         // get the edge vi-vertex
-        auto eij = positions.row(vi) - positions.row(vertex);
-        auto eijPrime = newPositions.row(vi) - newPositions.row(vertex);
+        Eigen::Matrix<double, 1, 3> eij = positions.row(vi) - positions.row(vertex);
+        Eigen::Matrix<double, 1, 3> eijPrime = newPositions.row(vi) - newPositions.row(vertex);
         double wij = wt.getWeight(vi, vertex);
-        Si += wij * eij * eijPrime.transpose();
+        Si += wij * eij.transpose() * eijPrime;
     }
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(Si, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double det = svd.singularValues()(0) * svd.singularValues()(1) * svd.singularValues()(2);
@@ -161,7 +172,7 @@ Eigen::MatrixXd positionUpdateStep(const Eigen::ColPivHouseholderQR< Eigen::Matr
     // constructs the b matrix and solves for p' as in (9)
     MatrixbConstructor bConstr(vertices, faces, adjList, rotMatrices, positions, wt);
     bConstr.setFixedPoints(fixedPts, fixedPositions);
-
+    std::cout << "bMat: " <<  bConstr.bMat << std::endl;
     return laplacianMatQR.solve(bConstr.bMat);
 
 }

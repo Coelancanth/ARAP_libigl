@@ -10,9 +10,9 @@
 #include "spdlog/spdlog.h"
 class arapDeform {
 public:
-    arapDeform(const Eigen::MatrixXd& sourcevert,const Eigen::MatrixXi & sourcefaces;
+    arapDeform(const Eigen::MatrixXd& sourcevert,const Eigen::MatrixXi & sourcefaces);
     void setConstraints(const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions);
-    void compute( Eigen::MatrixXd& targetmesh, Eigen::MatrixXd initialGuess);
+    Eigen::MatrixXd compute(const Eigen::MatrixXd& initialGuess);
 private:
     Eigen::ColPivHouseholderQR< Eigen::MatrixXd >  laplacianMatQR;
     std::vector<int> fixedPts;

@@ -22,8 +22,8 @@ public:
     }
     double getWeight(int i, int j)
     {
-        if (!useCotanWeight) return 1;
-        return 1;
+        if (!useCotanWeight) return 1.0;
+        return 1.0;
     }
 
 private:
@@ -44,8 +44,8 @@ public:
     MatrixLConstructor(
                        const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
                        const std::vector<std::vector<int>> & adjList,
-                       WeightTable wt) :
-            freeCount(freePointCount), fixedCount(fixedPointCount);
+                       WeightTable wt)
+     ;
 
 
     void setFixedPoints(const std::vector<int> & fixedPts);

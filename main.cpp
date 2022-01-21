@@ -18,8 +18,8 @@
 #include "precompute.h"
 #include <stdexcept>
 #include <Eigen/SparseCholesky>
-
-
+#include <memory>
+#include "arapDeform.h"
 
 
 enum class Mode
@@ -37,6 +37,11 @@ struct State
     std::vector<Triplet> handle_constraints;
     //Eigen::MatrixXd anchor_constraints;
     //Eigen::MatrixXd handle_constraints;
+
+    // used for indexing e.g. L matrix
+    std::vector<int> anchorIndices;
+    std::vector<int> handleIndices;
+
     bool isTest = true;
     
     Mode mode = Mode::kPlacingAnchors;
@@ -80,18 +85,21 @@ int main(int argc, char *argv[])
     
     Eigen::MatrixXd Vertices_new;
 
-
+    // arap stuff
+    std::shared_ptr<arapDeform> arapDeformer;
+    std::vector<int> fixedPts;
+    std::vector<Eigen::Vector3d> fixedPositions;
 
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/bar1.off", Vertices, Faces);
+    igl::readOFF("../meshes/test_cube.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
     spdlog::info("load complete.");
-    spdlog::info("Vertices: {}x{}", Vertices.cols(), Vertices.rows());
-    spdlog::info("Faces: {}x{}", Faces.cols(), Faces.rows());
+    spdlog::info("Vertices: {}x{}", Vertices.rows(), Vertices.cols());
+    spdlog::info("Faces: {}x{}", Faces.rows(), Faces.cols());
 
     viewer.data().point_size = 10;
 
@@ -99,7 +107,7 @@ int main(int argc, char *argv[])
     viewer.data().point_size = kPointSize;
     
     LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
-    
+    arapDeformer = std::make_shared<arapDeform>(Vertices, Faces);
 
     /* -------------------------------------------------------------------------- */
     /*                              Lambda functions                              */
@@ -144,12 +152,49 @@ int main(int argc, char *argv[])
         
         if (state.mode == Mode::kDeform)
         {
-            long n_handle = state.handles.rows();
-            rhs.bottomRows(n_handle) = state.handles;
-            //spdlog::info("n_lhs: {}, n_rhs: {}", solver.rows(), rhs.rows());
-            Eigen::MatrixXd rhs_tmp = L_hat_T * rhs;
+//            long n_handle = state.handles.rows();
+//            rhs.bottomRows(n_handle) = state.handles;
+//            //spdlog::info("n_lhs: {}, n_rhs: {}", solver.rows(), rhs.rows());
+//            Eigen::MatrixXd rhs_tmp = L_hat_T * rhs;
+//
+//            Vertices = solver.solve(rhs_tmp);
+            //
+            spdlog::info("handles shape {}x{}", state.handles.rows(), state.handles.cols());
+            spdlog::info("{}", state.handles);
+            spdlog::info("size: {}", state.handleIndices.size());
 
-            Vertices = solver.solve(rhs_tmp);
+            spdlog::info("anchor shape {}x{}", state.anchors.rows(), state.anchors.cols());
+            spdlog::info("{}", state.anchors);
+            spdlog::info("size: {}", state.anchorIndices.size());
+
+            // both anchor and handles are considered to be constraints.
+            int constrCount = state.handles.rows() + state.anchors.rows();
+            fixedPts.clear();
+            fixedPts.resize(constrCount);
+            fixedPositions.clear();
+            fixedPositions.resize(constrCount);
+            int chi; // constraint - handle - i
+            for (chi = 0; chi < state.handles.rows(); chi++)
+            {
+                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                spdlog::info ("its content: {}" , state.handles.row(chi));
+                fixedPts.push_back(state.handleIndices[chi]);
+                fixedPositions.push_back(state.handles.row(chi));
+            }
+            int cai;
+            for (cai = 0; cai < state.anchors.rows(); cai++)
+            {
+                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                spdlog::info ("its content: {}" , state.anchors.row(cai));
+                fixedPts.push_back(state.anchorIndices[cai]);
+                fixedPositions.push_back(state.anchors.row(cai));
+            }
+
+            arapDeformer->setConstraints(fixedPts, fixedPositions);
+            Eigen::MatrixXd result = arapDeformer->compute(Vertices);
+            Vertices = result;
+
+            spdlog::info("Vertices.shape: {}x{}", Vertices.rows(), Vertices.cols());
         }
 
         viewer.data().set_vertices(Vertices);
@@ -308,6 +353,7 @@ int main(int argc, char *argv[])
                         state.anchors.row(state.anchors.rows() - 1) = new_coor;
                         
                         state.anchor_constraints.emplace_back(state.anchors.rows() - 1, idx_v, 1);
+                        state.anchorIndices.push_back(idx_v);
                     }
                 }
 
@@ -323,6 +369,8 @@ int main(int argc, char *argv[])
                         state.handles.row(state.handles.rows() - 1) = new_coor;
 
                         state.handle_constraints.emplace_back(state.handles.rows() - 1, idx_v, 1);
+                        state.handleIndices.push_back(idx_v);
+
                     }
                 }
                 
@@ -437,6 +485,12 @@ int main(int argc, char *argv[])
                 throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
             }
             spdlog::info("Precomputation Ends");
+
+
+
+
+
+
             return true;
 
             break;
