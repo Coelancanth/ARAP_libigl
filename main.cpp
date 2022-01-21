@@ -89,9 +89,16 @@ int main(int argc, char *argv[])
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
+    spdlog::info("load complete.");
+    spdlog::info("Vertices: {}x{}", Vertices.cols(), Vertices.rows());
+    spdlog::info("Faces: {}x{}", Faces.cols(), Faces.rows());
+
+    viewer.data().point_size = 10;
+
+
     viewer.data().point_size = kPointSize;
     
-    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
     
 
     /* -------------------------------------------------------------------------- */
@@ -237,8 +244,8 @@ int main(int argc, char *argv[])
 
                     //spdlog::info("state.anchor_constraint:\n{}", state.anchor_constraints);
                     Eigen::SparseMatrix<double, Eigen::RowMajor> L_hat;
-                    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
-                    lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+                    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
+                    lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
                     
                     L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
                     spdlog::info("handles:\n{}", state.handles);
@@ -398,8 +405,8 @@ int main(int argc, char *argv[])
             
             // TODO: Generating matrix is too slow now, need optimization.
             // Precomputation for naive laplacian
-            LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
-            lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::UNIFORM_WEIGHT);
+            LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
+            lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
             // rhs, laplacian coordinates
             Eigen::MatrixXd delta = lp.first * Vertices;
             long n_vertice = delta.rows();

@@ -23,5 +23,6 @@ file(GLOB SRC_FILES source/*.cpp)
 #add_library(core ${SRC_FILES})
 #target_link_libraries(core igl::core igl::opengl_glfw igl::opengl igl::opengl_glfw_imgui)
 
-add_executable(${PROJECT_NAME} "main.cpp" ${SRC_FILES})
+add_executable(${PROJECT_NAME} "main.cpp" ${SRC_FILES} "include/arapStuff.h" "source/arapStuff.cpp"
+        "include/arapDeform.h" "source/arapDeform.cpp")
 target_link_libraries(${PROJECT_NAME} PUBLIC igl::core igl::opengl_glfw igl::opengl igl::opengl_glfw_imgui)
