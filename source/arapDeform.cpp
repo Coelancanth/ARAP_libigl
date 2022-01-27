@@ -12,7 +12,7 @@ arapDeform::arapDeform(const Eigen::MatrixXd &sourcevert, const Eigen::MatrixXi 
     spdlog::info("creating adj matrix, using libigl functions");
     igl::adjacency_list(faces, adjList, false);
     spdlog::info("creating weight table");
-    wt = WeightTable();
+    wt = WeightTable(vertices, faces, adjList);
 
 }
 
@@ -23,33 +23,47 @@ void arapDeform::setConstraints(const std::vector<int> &fixedPt, const std::vect
     spdlog::info("creating laplacian (QR)");
 
     MatrixLConstructor lconstr (vertices, faces, adjList, wt);
+    lconstr.setFixedPoints(fixedPts);
     laplacianMatQR = lconstr.getQR();
+
+    // replace the corresponding vertices with the fixed value
+    for (int i=0; i < fixedPos.size(); i++)
+    {
+        int pt = fixedPt[i];
+        this->vertices.row(pt) = fixedPos[i];
+    }
 
 }
 
-Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess) {
+Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess, int stepCount) {
     // how to guess though?
     std::vector<Eigen::Matrix3d> rot = rotationUpdateStep(
             vertices, faces, adjList, initialGuess, wt
             );
+
+    // use all identity for first iteration?
+//    int idxcount = initialGuess.rows();
+//    std::vector<Eigen::Matrix3d> rot (idxcount, Eigen::Matrix3d::Identity());
     Eigen::MatrixXd pos = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
                               vertices, faces,
                               adjList, rot, initialGuess, wt);
     bool converged = false;
-    int stepcount = 0;
+    int stepcount = 12;
+
     while (!converged)
     {
-        rot = rotationUpdateStep(vertices, faces, adjList, pos, wt);
-        pos = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
-                                 vertices, faces,
-                                 adjList, rot, pos, wt);
         stepcount += 1;
 
-        if (stepcount >= 10)
+        if (stepcount >= stepCount)
         {
             converged = true;
             // TODO: stopping condition?
         }
+
+        rot = rotationUpdateStep(vertices, faces, adjList, pos, wt);
+        pos = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
+                                 vertices, faces,
+                                 adjList, rot, pos, wt);
     }
     return pos;
 }

@@ -12,14 +12,14 @@ class arapDeform {
 public:
     arapDeform(const Eigen::MatrixXd& sourcevert,const Eigen::MatrixXi & sourcefaces);
     void setConstraints(const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions);
-    Eigen::MatrixXd compute(const Eigen::MatrixXd& initialGuess);
+    Eigen::MatrixXd compute(const Eigen::MatrixXd& initialGuess, int stepCount);
 private:
     Eigen::ColPivHouseholderQR< Eigen::MatrixXd >  laplacianMatQR;
     std::vector<int> fixedPts;
     std::vector<Eigen::Vector3d>  fixedPositions;
     std::vector<std::vector<int>> adjList;
-    const Eigen::MatrixXd& vertices;
-    const Eigen::MatrixXi& faces;
+    Eigen::MatrixXd vertices;
+    Eigen::MatrixXi faces;
     WeightTable wt;
 };
 

@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/test_cube.off", Vertices, Faces);
+    igl::readOFF("../meshes/bar3.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
             }
 
             arapDeformer->setConstraints(fixedPts, fixedPositions);
-            Eigen::MatrixXd result = arapDeformer->compute(Vertices);
+            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 1);
             Vertices = result;
 
             spdlog::info("Vertices.shape: {}x{}", Vertices.rows(), Vertices.cols());
@@ -354,6 +354,7 @@ int main(int argc, char *argv[])
                         
                         state.anchor_constraints.emplace_back(state.anchors.rows() - 1, idx_v, 1);
                         state.anchorIndices.push_back(idx_v);
+
                     }
                 }
 
@@ -370,6 +371,7 @@ int main(int argc, char *argv[])
 
                         state.handle_constraints.emplace_back(state.handles.rows() - 1, idx_v, 1);
                         state.handleIndices.push_back(idx_v);
+
 
                     }
                 }
@@ -498,7 +500,9 @@ int main(int argc, char *argv[])
         // Will just trigger a update
         case 'U':
         case 'u': {
-            break;
+            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 1);
+            Vertices = result;
+            return true;
         }
         default:
             return false;

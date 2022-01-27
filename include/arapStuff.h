@@ -16,18 +16,16 @@
 class WeightTable
 {
 public:
-    WeightTable ()
-    {
-        useCotanWeight = false;
-    }
-    double getWeight(int i, int j)
-    {
-        if (!useCotanWeight) return 1.0;
-        return 1.0;
-    }
+    WeightTable ();
+    WeightTable(const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
+                                       const std::vector<std::vector<int>> & adjList);
+
+    double getWeight(int i, int j);
+
 
 private:
     bool useCotanWeight;
+    Eigen::MatrixXd weights;
 };
 
 
@@ -79,16 +77,20 @@ public:
 
 Eigen::Matrix3d rotationUpdateSingleVertex(int vertex,
                                            const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
+                                           //const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions,
                                            const std::vector<std::vector<int>> & adjList,
                                            const Eigen::MatrixXd & newPositions,
                                            WeightTable wt);
 
 
 std::vector<Eigen::Matrix3d> rotationUpdateStep(
-        const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
+        const Eigen::MatrixXd& vertices,
+        const Eigen::MatrixXi& faces,
+        //const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions,
         const std::vector<std::vector<int>> & adjList,
-        const Eigen::MatrixXd & newPositions,
-        WeightTable wt);
+        const Eigen::MatrixXd& newPositions,
+
+        const WeightTable&  wt);
 
 Eigen::MatrixXd positionUpdateStep(const Eigen::ColPivHouseholderQR< Eigen::MatrixXd > & laplacianMatQR,
                                    const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions,
