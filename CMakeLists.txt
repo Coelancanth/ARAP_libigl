@@ -26,10 +26,10 @@ file(GLOB SRC_FILES source/*.cpp)
 #target_link_libraries(core igl::core igl::opengl_glfw igl::opengl igl::opengl_glfw_imgui)
 
 add_executable(${PROJECT_NAME} "main.cpp"  "include/arapStuff.h" "source/arapStuff.cpp"
-        "include/arapDeform.h" "source/arapDeform.cpp" "source/precompute.cpp")
+        "include/arapDeform.h" "source/arapDeform.cpp" "source/precompute.cpp" source/WeightTable.cpp include/WeightTable.h source/MatrixLConstructor.cpp include/MatrixLConstructor.h source/MatrixBConstructor.cpp include/MatrixBConstructor.h)
 target_link_libraries(${PROJECT_NAME} PUBLIC igl::core igl::opengl_glfw igl::opengl igl::opengl_glfw_imgui)
 
 add_executable(test "arapTest.cpp" "include/arapStuff.h" "source/arapStuff.cpp"
-        "include/arapDeform.h" "source/arapDeform.cpp" "source/precompute.cpp")
+        "include/arapDeform.h" "source/arapDeform.cpp" "source/precompute.cpp" source/WeightTable.cpp include/WeightTable.h source/MatrixLConstructor.cpp include/MatrixLConstructor.h source/MatrixBConstructor.cpp include/MatrixBConstructor.h)
 target_link_libraries(test PUBLIC igl::core igl::opengl_glfw igl::opengl igl::opengl_glfw_imgui)
 

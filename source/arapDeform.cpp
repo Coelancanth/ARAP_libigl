@@ -4,6 +4,9 @@
 
 #include "arapDeform.h"
 #include "igl/adjacency_list.h"
+#include "MatrixBConstructor.h"
+#include "MatrixLConstructor.h"
+#include "arapStuff.h"
 arapDeform::arapDeform(const Eigen::MatrixXd &sourcevert, const Eigen::MatrixXi &sourcefaces):
     adjList(), faces(sourcefaces), vertices(sourcevert)
 
@@ -15,7 +18,10 @@ arapDeform::arapDeform(const Eigen::MatrixXd &sourcevert, const Eigen::MatrixXi 
     wt = WeightTable(vertices, faces, adjList);
 
 }
-
+void arapDeform::updateConstraints(const std::vector<Eigen::Vector3d> &fixedPos)
+{
+    fixedPositions = fixedPos;
+}
 void arapDeform::setConstraints(const std::vector<int> &fixedPt, const std::vector<Eigen::Vector3d> &fixedPos) {
     fixedPositions = fixedPos;
     fixedPts = fixedPt;
@@ -35,19 +41,28 @@ void arapDeform::setConstraints(const std::vector<int> &fixedPt, const std::vect
 
 }
 
-Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess) {
+void arapDeform::compute(int iter) {
     // how to guess though?
-    std::vector<Eigen::Matrix3d> rot = rotationUpdateStep(
-            vertices, faces, adjList, initialGuess, wt
-            );
+//    std::vector<Eigen::Matrix3d> rot = rotationUpdateStep(
+//            vertices, faces, adjList, initialGuess, wt
+//            );
 
     // use all identity for first iteration?
-//    int idxcount = initialGuess.rows();
-//    std::vector<Eigen::Matrix3d> rot (idxcount, Eigen::Matrix3d::Identity());
+    int idxcount = this->vertices.rows();
+    std::vector<Eigen::Matrix3d> rot (idxcount, Eigen::Matrix3d::Identity());
+
     Eigen::MatrixXd pos = vertices;
     Eigen::MatrixXd posprime = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
                                                    vertices, faces,
-                                                   adjList, rot, initialGuess, wt);;
+                                                   adjList, rot,  wt);
+
+    for (int i = 1; i < iter; i++)
+    {
+        rot = rotationUpdateStep(pos, faces, adjList, posprime, wt);
+        pos = posprime;
+        posprime = positionUpdateStep(laplacianMatQR, fixedPts, fixedPositions,
+                                      pos, faces, adjList, rot, wt);
+    }
     this->vertices = posprime;
-    return posprime;
+
 }

@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/bar3.off", Vertices, Faces);
+    igl::readOFF("../meshes/cactus_small.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -189,8 +189,8 @@ int main(int argc, char *argv[])
             }
 
             arapDeformer->setConstraints(fixedPts, fixedPositions);
-            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 1);
-            Vertices = result;
+            arapDeformer->compute(5);
+            Vertices = arapDeformer->getVertices();
 
             spdlog::info("Vertices.shape: {}x{}", Vertices.rows(), Vertices.cols());
         }
@@ -451,39 +451,39 @@ int main(int argc, char *argv[])
             spdlog::info("Mode: [Deformation]");
             spdlog::info("Precomputation Begins");
             
-            // TODO: Generating matrix is too slow now, need optimization.
-            // Precomputation for naive laplacian
-            LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
-            lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
-            // rhs, laplacian coordinates
-            Eigen::MatrixXd delta = lp.first * Vertices;
-            long n_vertice = delta.rows();
-            long n_anchor = state.anchors.rows();
-            long n_handle = state.handles.rows();
-            rhs.conservativeResize(n_vertice, 3);
-            rhs.topRows(n_vertice) = delta;
-            rhs.conservativeResize(n_vertice + n_anchor, 3);
-            rhs.bottomRows(n_anchor) = state.anchors;
-            //spdlog::info("rhs:\n{}", rhs);
-            rhs.conservativeResize(rhs.rows() + n_handle, 3);
-
-            
-            
-            L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
-            L_hat_T = Eigen::SparseMatrix<double, Eigen::RowMajor>(L_hat.transpose());
-            // Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(L_hat.transpose()) * L_hat;
-            Eigen::SparseMatrix<double> M = L_hat_T * L_hat;
-
-            
-
-            // Cholesky decomposition, only need to do once, before entering into deformation mode.
-            spdlog::info("Factorization Begins");
-            solver.compute(M);
-            spdlog::info("Factorization Ends");
-            if (solver.info() != Eigen::Success)
-            {
-                throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
-            }
+//            // TODO: Generating matrix is too slow now, need optimization.
+//            // Precomputation for naive laplacian
+//            LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
+//            lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
+//            // rhs, laplacian coordinates
+//            Eigen::MatrixXd delta = lp.first * Vertices;
+//            long n_vertice = delta.rows();
+//            long n_anchor = state.anchors.rows();
+//            long n_handle = state.handles.rows();
+//            rhs.conservativeResize(n_vertice, 3);
+//            rhs.topRows(n_vertice) = delta;
+//            rhs.conservativeResize(n_vertice + n_anchor, 3);
+//            rhs.bottomRows(n_anchor) = state.anchors;
+//            //spdlog::info("rhs:\n{}", rhs);
+//            rhs.conservativeResize(rhs.rows() + n_handle, 3);
+//
+//
+//
+//            L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
+//            L_hat_T = Eigen::SparseMatrix<double, Eigen::RowMajor>(L_hat.transpose());
+//            // Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(L_hat.transpose()) * L_hat;
+//            Eigen::SparseMatrix<double> M = L_hat_T * L_hat;
+//
+//
+//
+//            // Cholesky decomposition, only need to do once, before entering into deformation mode.
+//            spdlog::info("Factorization Begins");
+//            solver.compute(M);
+//            spdlog::info("Factorization Ends");
+//            if (solver.info() != Eigen::Success)
+//            {
+//                throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
+//            }
             spdlog::info("Precomputation Ends");
 
 
@@ -498,8 +498,8 @@ int main(int argc, char *argv[])
         // Will just trigger a update
         case 'U':
         case 'u': {
-            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 20);
-            Vertices = result;
+//            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 20);
+//            Vertices = result;
             return true;
         }
         default:
