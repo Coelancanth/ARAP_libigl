@@ -43,7 +43,7 @@ struct State
     std::vector<int> handleIndices;
 
     bool isTest = true;
-    
+
     Mode mode = Mode::kPlacingAnchors;
     // bool placing_anchors = true;
     // bool placing_handles = false;
@@ -90,10 +90,12 @@ int main(int argc, char *argv[])
     std::vector<int> fixedPts;
     std::vector<Eigen::Vector3d> fixedPositions;
 
+    bool constraintsChange = true;
+
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/cactus_small.off", Vertices, Faces);
+    igl::readOFF("../meshes/bar3.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -159,40 +161,64 @@ int main(int argc, char *argv[])
 //
 //            Vertices = solver.solve(rhs_tmp);
             //
-            spdlog::info("handles shape {}x{}", state.handles.rows(), state.handles.cols());
-            spdlog::info("{}", state.handles);
-            spdlog::info("size: {}", state.handleIndices.size());
 
-            spdlog::info("anchor shape {}x{}", state.anchors.rows(), state.anchors.cols());
-            spdlog::info("{}", state.anchors);
-            spdlog::info("size: {}", state.anchorIndices.size());
 
-            // both anchor and handles are considered to be constraints.
-            int constrCount = state.handles.rows() + state.anchors.rows();
-            fixedPts.clear();
-            fixedPositions.clear();
-            int chi; // constraint - handle - i
-            for (chi = 0; chi < state.handles.rows(); chi++)
+
+            if (constraintsChange)
             {
-                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
-                spdlog::info ("its content: {}" , state.handles.row(chi));
-                fixedPts.push_back(state.handleIndices[chi]);
-                fixedPositions.push_back(state.handles.row(chi));
-            }
-            int cai;
-            for (cai = 0; cai < state.anchors.rows(); cai++)
-            {
-                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
-                spdlog::info ("its content: {}" , state.anchors.row(cai));
-                fixedPts.push_back(state.anchorIndices[cai]);
-                fixedPositions.push_back(state.anchors.row(cai));
-            }
+                spdlog::info("handles shape {}x{}", state.handles.rows(), state.handles.cols());
+                spdlog::info("{}", state.handles);
+                spdlog::info("size: {}", state.handleIndices.size());
 
-            arapDeformer->setConstraints(fixedPts, fixedPositions);
+                spdlog::info("anchor shape {}x{}", state.anchors.rows(), state.anchors.cols());
+                spdlog::info("{}", state.anchors);
+                spdlog::info("size: {}", state.anchorIndices.size());
+
+                // both anchor and handles are considered to be constraints.
+                int constrCount = state.handles.rows() + state.anchors.rows();
+                fixedPts.clear();
+                fixedPositions.clear();
+                int chi; // constraint - handle - i
+                for (chi = 0; chi < state.handles.rows(); chi++)
+                {
+                    spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                    spdlog::info ("its content: {}" , state.handles.row(chi));
+                    fixedPts.push_back(state.handleIndices[chi]);
+                    fixedPositions.push_back(state.handles.row(chi));
+                }
+                int cai;
+                for (cai = 0; cai < state.anchors.rows(); cai++)
+                {
+                    spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                    spdlog::info ("its content: {}" , state.anchors.row(cai));
+                    fixedPts.push_back(state.anchorIndices[cai]);
+                    fixedPositions.push_back(state.anchors.row(cai));
+
+
+                }
+
+                arapDeformer->setConstraints(fixedPts, fixedPositions);
+                constraintsChange = false;
+            }
+            else
+            {
+                fixedPositions.clear();
+                int chi; // constraint - handle - i
+                for (chi = 0; chi < state.handles.rows(); chi++)
+                {
+
+                    fixedPts.push_back(state.handleIndices[chi]);
+                    fixedPositions.push_back(state.handles.row(chi));
+                }
+
+                arapDeformer->updateConstraints(fixedPositions);
+            }
             arapDeformer->compute(5);
             Vertices = arapDeformer->getVertices();
 
-            spdlog::info("Vertices.shape: {}x{}", Vertices.rows(), Vertices.cols());
+
+
+
         }
 
         viewer.data().set_vertices(Vertices);
@@ -352,6 +378,7 @@ int main(int argc, char *argv[])
                         
                         state.anchor_constraints.emplace_back(state.anchors.rows() - 1, idx_v, 1);
                         state.anchorIndices.push_back(idx_v);
+                        constraintsChange = true;
 
                     }
                 }
@@ -369,7 +396,7 @@ int main(int argc, char *argv[])
 
                         state.handle_constraints.emplace_back(state.handles.rows() - 1, idx_v, 1);
                         state.handleIndices.push_back(idx_v);
-
+                        constraintsChange = true;
 
                     }
                 }

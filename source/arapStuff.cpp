@@ -39,7 +39,7 @@ Eigen::Matrix3d rotationUpdateSingleVertex(int vertex,
         double wij = wt.getWeight(vi, vertex);
         Si += wij * eij.transpose() * eijPrime;
     }
-    std::cout << "vert" << vertex << "covmat\n" << Si << std::endl;
+    //std::cout << "vert" << vertex << "covmat\n" << Si << std::endl;
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(Si, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double det = svd.singularValues()(0) * svd.singularValues()(1) * svd.singularValues()(2);
 

@@ -51,7 +51,7 @@ WeightTable::WeightTable(const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&
         weights(v3,v2) += cot1/2;
         weights(v2,v3) += cot1/2;
     }
-    std::cout << "weight init complete.\n" << weights << std::endl;
+    // std::cout << "weight init complete.\n" << weights << std::endl;
 
 }
 
