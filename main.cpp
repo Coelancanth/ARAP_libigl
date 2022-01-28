@@ -170,9 +170,7 @@ int main(int argc, char *argv[])
             // both anchor and handles are considered to be constraints.
             int constrCount = state.handles.rows() + state.anchors.rows();
             fixedPts.clear();
-            fixedPts.resize(constrCount);
             fixedPositions.clear();
-            fixedPositions.resize(constrCount);
             int chi; // constraint - handle - i
             for (chi = 0; chi < state.handles.rows(); chi++)
             {
@@ -500,7 +498,7 @@ int main(int argc, char *argv[])
         // Will just trigger a update
         case 'U':
         case 'u': {
-            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 1);
+            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 20);
             Vertices = result;
             return true;
         }

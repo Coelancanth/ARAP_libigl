@@ -5,6 +5,8 @@ list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 
 
 # Libigl
@@ -30,3 +32,4 @@ target_link_libraries(${PROJECT_NAME} PUBLIC igl::core igl::opengl_glfw igl::ope
 add_executable(test "arapTest.cpp" "include/arapStuff.h" "source/arapStuff.cpp"
         "include/arapDeform.h" "source/arapDeform.cpp" "source/precompute.cpp")
 target_link_libraries(test PUBLIC igl::core igl::opengl_glfw igl::opengl igl::opengl_glfw_imgui)
+

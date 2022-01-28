@@ -42,17 +42,21 @@ public:
     MatrixLConstructor(
                        const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
                        const std::vector<std::vector<int>> & adjList,
-                       WeightTable wt)
+                       WeightTable wt, const std::vector<int> & fixedPts)
      ;
 
 
-    void setFixedPoints(const std::vector<int> & fixedPts);
 
 
     Eigen::ColPivHouseholderQR< Eigen::MatrixXd > getQR();
 
 
-    Eigen::MatrixXd laplacianMat; // laplacian beltrami operator in (9)
+    Eigen::MatrixXd laplacianMat; // laplacian beltrami operator in (9) // TODO make private
+
+private:
+    // WARNING: fixed points MUST be added in a consistent way OR slack variables will NOT work
+    // fixed points order MUST be consistent across L, b
+    void setFixedPoints(const std::vector<int> & fixedPts);
 };
 
 
@@ -63,16 +67,21 @@ class MatrixbConstructor
 // rotMatrices is the vector with rotational matrices as per (6)
 // then just access the bMat...
 public:
+    // WARNING: fixed points MUST be added in a consistent way OR slack variables will NOT work
+    // TODO vertices and positions are one and the same
     MatrixbConstructor(const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
                        const std::vector<std::vector<int>> &adjList,
                        std::vector<Eigen::Matrix3d> rotMatrices, // contains Ri
                        const Eigen::MatrixXd& positions, // containes pi, shape is nx3
-                       WeightTable wt);
+                       WeightTable wt,
+                       const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions
+                       );
+
+    Eigen::MatrixXd bMat; // TODO make private
+
+private:
 
     void setFixedPoints(const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions);
-
-
-    Eigen::MatrixXd bMat;
 };
 
 Eigen::Matrix3d rotationUpdateSingleVertex(int vertex,

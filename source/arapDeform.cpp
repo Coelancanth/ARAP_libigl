@@ -22,20 +22,20 @@ void arapDeform::setConstraints(const std::vector<int> &fixedPt, const std::vect
 
     spdlog::info("creating laplacian (QR)");
 
-    MatrixLConstructor lconstr (vertices, faces, adjList, wt);
-    lconstr.setFixedPoints(fixedPts);
+    MatrixLConstructor lconstr (vertices, faces, adjList, wt, fixedPts);
+    // lconstr.setFixedPoints(fixedPts);
     laplacianMatQR = lconstr.getQR();
 
     // replace the corresponding vertices with the fixed value
-    for (int i=0; i < fixedPos.size(); i++)
-    {
-        int pt = fixedPt[i];
-        this->vertices.row(pt) = fixedPos[i];
-    }
+//    for (int i=0; i < fixedPos.size(); i++)
+//    {
+//        int pt = fixedPt[i];
+//        this->vertices.row(pt) = fixedPos[i];
+//    }
 
 }
 
-Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess, int stepCount) {
+Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess) {
     // how to guess though?
     std::vector<Eigen::Matrix3d> rot = rotationUpdateStep(
             vertices, faces, adjList, initialGuess, wt
@@ -44,26 +44,10 @@ Eigen::MatrixXd arapDeform::compute(const Eigen::MatrixXd & initialGuess, int st
     // use all identity for first iteration?
 //    int idxcount = initialGuess.rows();
 //    std::vector<Eigen::Matrix3d> rot (idxcount, Eigen::Matrix3d::Identity());
-    Eigen::MatrixXd pos = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
-                              vertices, faces,
-                              adjList, rot, initialGuess, wt);
-    bool converged = false;
-    int stepcount = 12;
-
-    while (!converged)
-    {
-        stepcount += 1;
-
-        if (stepcount >= stepCount)
-        {
-            converged = true;
-            // TODO: stopping condition?
-        }
-
-        rot = rotationUpdateStep(vertices, faces, adjList, pos, wt);
-        pos = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
-                                 vertices, faces,
-                                 adjList, rot, pos, wt);
-    }
-    return pos;
+    Eigen::MatrixXd pos = vertices;
+    Eigen::MatrixXd posprime = positionUpdateStep (laplacianMatQR, fixedPts, fixedPositions,
+                                                   vertices, faces,
+                                                   adjList, rot, initialGuess, wt);;
+    this->vertices = posprime;
+    return posprime;
 }
