@@ -17,7 +17,7 @@ public:
     Eigen::MatrixXd getVertices() {return vertices;};
 private:
     //void makeGuess(Eigen::MatrixXd & storage);
-    Eigen::ColPivHouseholderQR< Eigen::MatrixXd >  laplacianMatQR;
+    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> >   laplacianMatQR;
     std::vector<int> fixedPts;
     std::vector<Eigen::Vector3d>  fixedPositions;
     std::vector<std::vector<int>> adjList;

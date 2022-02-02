@@ -5,6 +5,8 @@
 #ifndef ARAP_MATRIXLCONSTRUCTOR_H
 #define ARAP_MATRIXLCONSTRUCTOR_H
 #include "WeightTable.h"
+#include "Eigen/SparseCore"
+#include <Eigen/SparseQR>
 
 class MatrixLConstructor
 {
@@ -24,11 +26,11 @@ public:
 
 
 
+    // function removed as this is probably too messy to compute in the class.
+//    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > getQR();
 
-    Eigen::ColPivHouseholderQR< Eigen::MatrixXd > getQR();
 
-
-    Eigen::MatrixXd laplacianMat; // laplacian beltrami operator in (9) // TODO make private
+    Eigen::SparseMatrix<double> laplacianMat; // laplacian beltrami operator in (9) // TODO make private
 
 private:
     // WARNING: fixed points MUST be added in a consistent way OR slack variables will NOT work

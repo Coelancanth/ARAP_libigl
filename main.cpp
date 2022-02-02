@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/bar3.off", Vertices, Faces);
+    igl::readOFF("../meshes/bar2.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -163,6 +163,27 @@ int main(int argc, char *argv[])
             //
 
 
+            // both anchor and handles are considered to be constraints.
+
+            fixedPts.clear();
+            fixedPositions.clear();
+            int chi; // constraint - handle - i
+            for (chi = 0; chi < state.handles.rows(); chi++)
+            {
+                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                spdlog::info ("its content: {}" , state.handles.row(chi));
+                fixedPts.push_back(state.handleIndices[chi]);
+                fixedPositions.push_back(state.handles.row(chi));
+            }
+            int cai;
+            for (cai = 0; cai < state.anchors.rows(); cai++)
+            {
+                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                spdlog::info ("its content: {}" , state.anchors.row(cai));
+                fixedPts.push_back(state.anchorIndices[cai]);
+                fixedPositions.push_back(state.anchors.row(cai));
+
+            }
 
             if (constraintsChange)
             {
@@ -174,46 +195,17 @@ int main(int argc, char *argv[])
                 spdlog::info("{}", state.anchors);
                 spdlog::info("size: {}", state.anchorIndices.size());
 
-                // both anchor and handles are considered to be constraints.
-                int constrCount = state.handles.rows() + state.anchors.rows();
-                fixedPts.clear();
-                fixedPositions.clear();
-                int chi; // constraint - handle - i
-                for (chi = 0; chi < state.handles.rows(); chi++)
-                {
-                    spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
-                    spdlog::info ("its content: {}" , state.handles.row(chi));
-                    fixedPts.push_back(state.handleIndices[chi]);
-                    fixedPositions.push_back(state.handles.row(chi));
-                }
-                int cai;
-                for (cai = 0; cai < state.anchors.rows(); cai++)
-                {
-                    spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
-                    spdlog::info ("its content: {}" , state.anchors.row(cai));
-                    fixedPts.push_back(state.anchorIndices[cai]);
-                    fixedPositions.push_back(state.anchors.row(cai));
-
-
-                }
 
                 arapDeformer->setConstraints(fixedPts, fixedPositions);
                 constraintsChange = false;
             }
             else
             {
-                fixedPositions.clear();
-                int chi; // constraint - handle - i
-                for (chi = 0; chi < state.handles.rows(); chi++)
-                {
-
-                    fixedPts.push_back(state.handleIndices[chi]);
-                    fixedPositions.push_back(state.handles.row(chi));
-                }
+                spdlog::info ("constraints unchanged, will reuse Laplacian");
 
                 arapDeformer->updateConstraints(fixedPositions);
             }
-            arapDeformer->compute(5);
+            arapDeformer->compute(2);
             Vertices = arapDeformer->getVertices();
 
 

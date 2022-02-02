@@ -7,6 +7,8 @@
 
 
 #include "arapStuff.h"
+#include "Eigen/SparseCore"
+#include "Eigen/SparseQR"
 
 MatrixLConstructor::MatrixLConstructor(
         const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
@@ -19,23 +21,23 @@ MatrixLConstructor::MatrixLConstructor(
     int vCount = vertices.rows();
     int cCount = fixedPts.size();
 
-    laplacianMat.resize(vCount+cCount, vCount+cCount);
-    laplacianMat.setZero();
 
+
+
+    // it is expected that each row has 5 nonzero entries -> 3 neighbors and 1 on diagonal and 1 optional slack variable.
+    // the last few rows should have 1 entry each
+    laplacianMat.resize(vCount+cCount, vCount+cCount);        // default is column major
+    laplacianMat.reserve(Eigen::VectorXi::Constant(vCount+cCount,5));
     for (int vi = 0; vi < vCount; vi++)
     {
         // construct the sparse matrix, one row at a time.
         const std::vector<int> neighbors = adjList[vi];
         for (int nei: neighbors)
         {
-
-
-            laplacianMat(vi, nei) = -wt.getWeight(vi, nei);
-            laplacianMat(vi, vi) += wt.getWeight(vi, nei);
-
+            laplacianMat.coeffRef(vi, nei) -= wt.getWeight(vi, nei);
+            laplacianMat.coeffRef(vi, vi) += wt.getWeight(vi, nei);
         }
     }
-
     // std::cout <<"Lap Matrix: before constr" << std::endl << laplacianMat << std::endl;
 
     setFixedPoints(fixedPts);
@@ -57,22 +59,32 @@ void MatrixLConstructor::setFixedPoints(const std::vector<int> & fixedPts)
     // add "slack" variables..
     int constrLen = fixedPts.size();
     int vertexLen = this->laplacianMat.rows() - constrLen;
+    // seems setting elements to zero in Eigen::SparseMatrix
+    // is sufficient and the makecompressed will remove the zeroes entries.
+    // however we dont know anymore which columns should be removed so...
+
+
+
+
     for (int i = 0; i < constrLen; i++)
     {
         int point = fixedPts[i];
-        laplacianMat.col(i  + vertexLen).setZero();
-        laplacianMat.row(i  + vertexLen).setZero();
 
-        laplacianMat(i+vertexLen, point) = 1;
-        laplacianMat(point, i+vertexLen) = 1;
+        laplacianMat.coeffRef(i+vertexLen, point) += 1;
+        laplacianMat.coeffRef(point, i+vertexLen) += 1;
 
 
     }
+    laplacianMat.makeCompressed();
+
 
 }
 
-Eigen::ColPivHouseholderQR< Eigen::MatrixXd > MatrixLConstructor::getQR()
-{
-    // std::cout <<"Lap Matrix: \n" << laplacianMat << std::endl;
-    return laplacianMat.colPivHouseholderQr();
-}
+//Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > MatrixLConstructor::getQR()
+//{
+//    // std::cout <<"Lap Matrix: \n" << laplacianMat << std::endl;
+//    //return laplacianMat.colPivHouseholderQr();
+//    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > qrsolver;
+//    qrsolver.compute(laplacianMat);
+//    return qrsolver;
+//}

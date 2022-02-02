@@ -34,7 +34,7 @@ std::vector<Eigen::Matrix3d> rotationUpdateStep(
 
         const WeightTable&  wt);
 
-Eigen::MatrixXd positionUpdateStep(const Eigen::ColPivHouseholderQR< Eigen::MatrixXd > & laplacianMatQR,
+Eigen::MatrixXd positionUpdateStep(const Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> >  & laplacianMatQR,
                                    const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions,
                                    const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
                                    const std::vector<std::vector<int>> &adjList,

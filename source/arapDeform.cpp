@@ -28,9 +28,10 @@ void arapDeform::setConstraints(const std::vector<int> &fixedPt, const std::vect
 
     spdlog::info("creating laplacian (QR)");
 
+    // fixedPts is set in the constructor...
     MatrixLConstructor lconstr (vertices, faces, adjList, wt, fixedPts);
-    // lconstr.setFixedPoints(fixedPts);
-    laplacianMatQR = lconstr.getQR();
+
+    laplacianMatQR.compute(lconstr.laplacianMat);
 
     // replace the corresponding vertices with the fixed value
 //    for (int i=0; i < fixedPos.size(); i++)
