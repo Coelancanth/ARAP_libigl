@@ -7,6 +7,7 @@
 WeightTable::WeightTable()
 {
     useCotanWeight = false;
+    spdlog::warn("using uniform weight. this may be problematic");
 }
 double WeightTable::getWeight(int i, int j)
 {

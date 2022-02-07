@@ -19,7 +19,7 @@
 #include <stdexcept>
 #include <Eigen/SparseCholesky>
 #include <memory>
-#include "arapDeform.h"
+#include "arapDeformer.h"
 
 
 enum class Mode
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd Vertices_new;
 
     // arap stuff
-    std::shared_ptr<arapDeform> arapDeformer;
+    std::shared_ptr<arapDeformer> deformer;
     std::vector<int> fixedPts;
     std::vector<Eigen::Vector3d> fixedPositions;
 
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/bar2.off", Vertices, Faces);
+    igl::readOFF("../meshes/cactus_small.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -108,8 +108,8 @@ int main(int argc, char *argv[])
 
     viewer.data().point_size = kPointSize;
     
-    LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
-    arapDeformer = std::make_shared<arapDeform>(Vertices, Faces);
+    //LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
+    deformer = std::make_shared<arapDeformer>(Faces, Vertices);
 
     /* -------------------------------------------------------------------------- */
     /*                              Lambda functions                              */
@@ -165,14 +165,14 @@ int main(int argc, char *argv[])
 
             // both anchor and handles are considered to be constraints.
 
-            fixedPts.clear();
+
             fixedPositions.clear();
             int chi; // constraint - handle - i
             for (chi = 0; chi < state.handles.rows(); chi++)
             {
                 spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
                 spdlog::info ("its content: {}" , state.handles.row(chi));
-                fixedPts.push_back(state.handleIndices[chi]);
+
                 fixedPositions.push_back(state.handles.row(chi));
             }
             int cai;
@@ -180,33 +180,17 @@ int main(int argc, char *argv[])
             {
                 spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
                 spdlog::info ("its content: {}" , state.anchors.row(cai));
-                fixedPts.push_back(state.anchorIndices[cai]);
+
                 fixedPositions.push_back(state.anchors.row(cai));
 
             }
 
-            if (constraintsChange)
-            {
-                spdlog::info("handles shape {}x{}", state.handles.rows(), state.handles.cols());
-                spdlog::info("{}", state.handles);
-                spdlog::info("size: {}", state.handleIndices.size());
+            deformer->setVertices(Vertices);
+            deformer->updateConstraints(fixedPositions);
 
-                spdlog::info("anchor shape {}x{}", state.anchors.rows(), state.anchors.cols());
-                spdlog::info("{}", state.anchors);
-                spdlog::info("size: {}", state.anchorIndices.size());
-
-
-                arapDeformer->setConstraints(fixedPts, fixedPositions);
-                constraintsChange = false;
-            }
-            else
-            {
-                spdlog::info ("constraints unchanged, will reuse Laplacian");
-
-                arapDeformer->updateConstraints(fixedPositions);
-            }
-            arapDeformer->compute(2);
-            Vertices = arapDeformer->getVertices();
+            deformer->compute(2);
+            Vertices = deformer->getVertices();
+            //std::cout << Vertices << std::endl;
 
 
 
@@ -469,40 +453,26 @@ int main(int argc, char *argv[])
             state.mode = Mode::kDeform;
             spdlog::info("Mode: [Deformation]");
             spdlog::info("Precomputation Begins");
-            
-//            // TODO: Generating matrix is too slow now, need optimization.
-//            // Precomputation for naive laplacian
-//            LaplacianPair lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
-//            lp = calculate_laplacian_matrix(Vertices, Faces, WeightType::kUniformWeight);
-//            // rhs, laplacian coordinates
-//            Eigen::MatrixXd delta = lp.first * Vertices;
-//            long n_vertice = delta.rows();
-//            long n_anchor = state.anchors.rows();
-//            long n_handle = state.handles.rows();
-//            rhs.conservativeResize(n_vertice, 3);
-//            rhs.topRows(n_vertice) = delta;
-//            rhs.conservativeResize(n_vertice + n_anchor, 3);
-//            rhs.bottomRows(n_anchor) = state.anchors;
-//            //spdlog::info("rhs:\n{}", rhs);
-//            rhs.conservativeResize(rhs.rows() + n_handle, 3);
-//
-//
-//
-//            L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
-//            L_hat_T = Eigen::SparseMatrix<double, Eigen::RowMajor>(L_hat.transpose());
-//            // Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(L_hat.transpose()) * L_hat;
-//            Eigen::SparseMatrix<double> M = L_hat_T * L_hat;
-//
-//
-//
-//            // Cholesky decomposition, only need to do once, before entering into deformation mode.
-//            spdlog::info("Factorization Begins");
-//            solver.compute(M);
-//            spdlog::info("Factorization Ends");
-//            if (solver.info() != Eigen::Success)
-//            {
-//                throw std::runtime_error("Deformation failed! Possibly non semi-positive definite matrix!");
-//            }
+
+
+            fixedPts.clear();
+            int chi; // constraint - handle - i
+            for (chi = 0; chi < state.handles.rows(); chi++)
+            {
+                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                fixedPts.push_back(state.handleIndices[chi]);
+            }
+            int cai;
+            for (cai = 0; cai < state.anchors.rows(); cai++)
+            {
+                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                fixedPts.push_back(state.anchorIndices[cai]);
+
+            }
+
+
+            deformer->setConstrainedPoints(fixedPts);
+
             spdlog::info("Precomputation Ends");
 
 
@@ -517,8 +487,30 @@ int main(int argc, char *argv[])
         // Will just trigger a update
         case 'U':
         case 'u': {
-//            Eigen::MatrixXd result = arapDeformer->compute(Vertices, 20);
-//            Vertices = result;
+            fixedPositions.clear();
+            int chi; // constraint - handle - i
+            for (chi = 0; chi < state.handles.rows(); chi++)
+            {
+                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                spdlog::info ("its content: {}" , state.handles.row(chi));
+
+                fixedPositions.push_back(state.handles.row(chi));
+            }
+            int cai;
+            for (cai = 0; cai < state.anchors.rows(); cai++)
+            {
+                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                spdlog::info ("its content: {}" , state.anchors.row(cai));
+
+                fixedPositions.push_back(state.anchors.row(cai));
+
+            }
+
+            deformer->setVertices(Vertices);
+            deformer->updateConstraints(fixedPositions);
+
+            deformer->compute(2);
+            Vertices = deformer->getVertices();
             return true;
         }
         default:

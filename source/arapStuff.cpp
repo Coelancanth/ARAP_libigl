@@ -7,6 +7,7 @@
 #include "math.h"
 #include "MatrixLConstructor.h"
 #include "MatrixBConstructor.h"
+
 double getAngleBtwnVector(const Eigen::Vector3d & v1, const  Eigen::Vector3d & v2)
 {
     double angle = v1.dot(v2) / v1.norm() / v2.norm();
@@ -29,18 +30,30 @@ Eigen::Matrix3d rotationUpdateSingleVertex(int vertex,
 
     int vCount = vertices.rows();
     Eigen::Matrix3d Si;
-    Eigen::Matrix3d Ri;
+    // Eigen::Matrix3d Ri;
+    Eigen::MatrixXd Pi;
+    Eigen::MatrixXd PiPrime;
+    Eigen::MatrixXd Di;
+    Di.resize(adjList[vertex].size(), adjList[vertex].size());
+    Pi.resize(adjList[vertex].size(),3);
+    PiPrime.resize(adjList[vertex].size(),3);
+    Di.setZero();
+    PiPrime.setZero();
+    Pi.setZero();
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(Pi); // for debugging, CLion gives an annoying error if I dont do this
 
-    Si.setZero();
-    for (int vi: adjList[vertex]) {
+    for (int i = 0; i < adjList[vertex].size(); i++) {
+        int vi = adjList[vertex][i];
         // get the edge vi-vertex
-        Eigen::Matrix<double, 1, 3> eij = positions.row(vi) - positions.row(vertex);
-        Eigen::Matrix<double, 1, 3> eijPrime = newPositions.row(vi) - newPositions.row(vertex);
+        Pi.row(i) = positions.row(vi) - positions.row(vertex);
+        PiPrime.row(i) = newPositions.row(vi) - newPositions.row(vertex);
         double wij = wt.getWeight(vi, vertex);
-        Si += wij * eij.transpose() * eijPrime;
+        Di(i,i) = wij/2;
+
     }
+    Si = Pi.transpose()*Di*PiPrime;
     //std::cout << "vert" << vertex << "covmat\n" << Si << std::endl;
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(Si, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    svd = Eigen::JacobiSVD<Eigen::MatrixXd>(Si, Eigen::ComputeThinU | Eigen::ComputeThinV); // for debugging
     double det = svd.singularValues()(0) * svd.singularValues()(1) * svd.singularValues()(2);
 
     if (det > 0)
@@ -90,6 +103,7 @@ std::vector<Eigen::Matrix3d> rotationUpdateStep(
     for (int vi = 0; vi < vCount; vi++)
     {
         result[vi] = rotationUpdateSingleVertex(vi, vertices, faces, adjList, newPositions, wt);
+        if (vi < 5) std::cout << "V" << vi << " rotmat:\n" << result[vi] << std::endl;
     }
     return result;
 }
@@ -109,10 +123,11 @@ Eigen::MatrixXd positionUpdateStep(const Eigen::SparseQR<Eigen::SparseMatrix<dou
 
     MatrixbConstructor bConstr(vertices, faces, adjList, rotMatrices,  wt, fixedPts, fixedPositions);
 
-    // std::cout << "bMat: " <<  bConstr.bMat << std::endl;
+//    std::cout << "bMat: " <<  bConstr.bMat.block(0,0,5,3) << std::endl;
+    std::cout << "bMat: " <<  bConstr.bMat << std::endl;
     auto res = laplacianMatQR.solve(bConstr.bMat);
     // std::cout << "solved position~\n" << res << std::endl;
-
+    std::cout << "Head of vertexPrime\n" << res.block(0,0,5,3) << "\n";
     return res.block(0,0,vertSize,3);
 }
 

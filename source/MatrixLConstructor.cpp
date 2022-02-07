@@ -41,6 +41,10 @@ MatrixLConstructor::MatrixLConstructor(
     // std::cout <<"Lap Matrix: before constr" << std::endl << laplacianMat << std::endl;
 
     setFixedPoints(fixedPts);
+    Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> detcalc;
+    detcalc.compute(laplacianMat);
+
+    std::cout <<" determinant of L matrix " << detcalc.determinant() << " or " << detcalc.logAbsDeterminant() << std::endl;
 
 };
 
@@ -76,6 +80,12 @@ void MatrixLConstructor::setFixedPoints(const std::vector<int> & fixedPts)
 
     }
     laplacianMat.makeCompressed();
+
+    std::cout << "Head of Laplacian\n";
+    for ( int i = 0; i < 5; i++)
+    {
+        std::cout << laplacianMat.row(i) << std::endl;
+    }
 
 
 }
