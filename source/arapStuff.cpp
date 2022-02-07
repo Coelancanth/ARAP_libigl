@@ -103,7 +103,7 @@ std::vector<Eigen::Matrix3d> rotationUpdateStep(
     for (int vi = 0; vi < vCount; vi++)
     {
         result[vi] = rotationUpdateSingleVertex(vi, vertices, faces, adjList, newPositions, wt);
-        if (vi < 5) std::cout << "V" << vi << " rotmat:\n" << result[vi] << std::endl;
+//        if (vi < 5) std::cout << "V" << vi << " rotmat:\n" << result[vi] << std::endl;
     }
     return result;
 }
@@ -124,10 +124,10 @@ Eigen::MatrixXd positionUpdateStep(const Eigen::SparseQR<Eigen::SparseMatrix<dou
     MatrixbConstructor bConstr(vertices, faces, adjList, rotMatrices,  wt, fixedPts, fixedPositions);
 
 //    std::cout << "bMat: " <<  bConstr.bMat.block(0,0,5,3) << std::endl;
-    std::cout << "bMat: " <<  bConstr.bMat << std::endl;
+//    std::cout << "bMat: " <<  bConstr.bMat << std::endl;
     auto res = laplacianMatQR.solve(bConstr.bMat);
     // std::cout << "solved position~\n" << res << std::endl;
-    std::cout << "Head of vertexPrime\n" << res.block(0,0,5,3) << "\n";
+//    std::cout << "Head of vertexPrime\n" << res.block(0,0,5,3) << "\n";
     return res.block(0,0,vertSize,3);
 }
 

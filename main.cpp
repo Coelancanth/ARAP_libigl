@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/cactus_small.off", Vertices, Faces);
+    igl::readOFF("../meshes/bar1.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 

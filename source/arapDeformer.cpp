@@ -44,7 +44,7 @@ void arapDeformer::compute(int iter) {
 
     for (int i = 1; i < iter; i++)
     {
-        std::cout << "iter" << i << ":\n";
+//        std::cout << "iter" << i << ":\n";
         rot = rotationUpdateStep(vertices, faces, adjList, posprime, wt);
 
         pos = posprime;

@@ -26,7 +26,7 @@ LaplacianPair calculate_laplacian_matrix(const Eigen::MatrixXd &vertices, const 
 
         return {L, L_s};
     }
-
+//
     // TODO: implement cotan_weight
     // if (weight_type == WeightType::COTAN_WEIGHT)
     //{

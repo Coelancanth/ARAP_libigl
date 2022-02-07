@@ -43,14 +43,8 @@ MatrixbConstructor::MatrixbConstructor(const Eigen::MatrixXd& vertices, const Ei
             Eigen::Matrix<double, 3,1> rhsT = wij / 2 * (RiRj)*pipj;
             //spdlog::info("bMat rhs: {}x{}", rhs.rows(),rhs.cols() );
 
-            if(vi == 621)
-            {
-                std::cout << "addrow" <<  rhsT.transpose() << std::endl;
-
-
-            }
             bMat.row(vi) += rhsT.transpose();
-            if(vi == 621) { std::cout << "now" << bMat.row(vi) << std::endl; }
+
 
         }
     }
