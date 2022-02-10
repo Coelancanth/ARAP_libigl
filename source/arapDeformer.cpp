@@ -37,13 +37,13 @@ void arapDeformer::compute(int iter) {
     std::vector<Eigen::Matrix3d> rot;
     Eigen::MatrixXd pos;
     Eigen::MatrixXd& posprime = this->result; // this->result = posprime;
-    spdlog::stopwatch sw0;
+    //spdlog::stopwatch sw0;
     rot = rotationUpdateStep(vertices, faces, adjList, vertices, wt);
-    spdlog::info("rotation_update costs: {}", sw0);
-    spdlog::stopwatch sw1;
+    //spdlog::info("rotation_update costs: {}", sw0);
+    //spdlog::stopwatch sw1;
     posprime = positionUpdateStep(laplacianMatQR, fixedPts, fixedPositions,
                                   vertices, faces, adjList, rot, wt);
-    spdlog::info("position_update costs: {}", sw1);
+    //spdlog::info("position_update costs: {}", sw1);
 
     for (int i = 1; i < iter; i++)
     {

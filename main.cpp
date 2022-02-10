@@ -21,7 +21,7 @@
 #include <Eigen/SparseCholesky>
 #include <memory>
 #include "arapDeformer.h"
-
+#include <cmath>
 
 
 enum class Mode
@@ -29,11 +29,14 @@ enum class Mode
     kPlacingAnchors = 0,
     kPlacingHandles = 1,
     kDeform = 2,
+    kSetRotationAxis = 3,
 };
 struct State
 {
     Eigen::MatrixXd anchors;
     Eigen::MatrixXd handles;
+    Eigen::MatrixXd axis;
+
     // used for adding constraints in a least-square way. (see O.Sorkine, Differential Representations for Mesh Processing, p.4)
     std::vector<Triplet> anchor_constraints;
     std::vector<Triplet> handle_constraints;
@@ -53,20 +56,20 @@ struct State
 } state;
 
 
-// bool add_vertices(Mode mode, State &state, Eigen::RowVector3f &last_mouse,
-// igl::opengl::glfw::Viewer &viewer, auto& push_undo)
-//{
-// }
+Eigen::Matrix3d calculate_rodrigue_matrix(double angle, Eigen::Vector3d unit_vector)
+{   
+        Eigen::Matrix3d m;
+        double c = cos(angle);
+        double s = sin(angle);
+        double x = unit_vector.x();
+        double y = unit_vector.y();
+        double z = unit_vector.z();
 
-// bool save_closest_handle_point(Eigen::RowVector3f &last_mouse, long
-// &closet_pt_id, State state)
-//{
-// }
-
-// bool apply_displacement(Eigen::RowVector3f &last_mouse, long closet_pt_id,
-// State &state)
-//{
-// }
+        m <<  c + x*x*(1-c), x*y*(1-c)-z*s, x*z*(1-c)+y*s, 
+              y*x*(1-c)+z*s, c+y*y*(1-c), y*z*(1-c)-x*s,
+              z*x*(1-c)-y*s, z*y*(1-c)+x*s, c+z*z*(1-c);
+        return m;
+}
 
 int main(int argc, char *argv[])
 {
@@ -91,6 +94,7 @@ int main(int argc, char *argv[])
     std::shared_ptr<arapDeformer> deformer;
     std::vector<int> fixedPts;
     std::vector<Eigen::Vector3d> fixedPositions;
+    std::vector<Eigen::Vector3d> axis_points;
 
     bool constraintsChange = true;
 
@@ -103,9 +107,27 @@ int main(int argc, char *argv[])
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
+    // register the ImGuizmo with viewer
+    // can't use more than one imgui plugins now
+
+    //igl::opengl::glfw::imgui::ImGuizmoPlugin imguizmo;
+    //viewer.plugins.push_back(&imguizmo);
+    //// Initialize ImGuizmo at mesh centroid
+    //imguizmo.T.block(0,3,3,1) = 
+        //0.5*(Vertices.colwise().maxCoeff() + Vertices.colwise().minCoeff()).transpose().cast<float>();
+    //const Eigen::Matrix4f T0 =imguizmo.T;
+      //imguizmo.callback = [&](const Eigen::Matrix4f & T)
+  //{
+    //const Eigen::Matrix4d TT = (T*T0.inverse()).cast<double>().transpose();
+    //viewer.data().set_vertices(
+      //(Vertices.rowwise().homogeneous()*TT).rowwise().hnormalized());
+    //viewer.data().compute_normals();
+  //};
+
     spdlog::info("load complete.");
     spdlog::info("Vertices: {}x{}", Vertices.rows(), Vertices.cols());
     spdlog::info("Faces: {}x{}", Faces.rows(), Faces.cols());
+    
 
     viewer.data().point_size = 10;
 
@@ -192,9 +214,9 @@ int main(int argc, char *argv[])
             //deformer->setVertices(Vertices);
             deformer->updateConstraints(fixedPositions);
 
-            spdlog::stopwatch stopwatch;
+            //spdlog::stopwatch stopwatch;
             deformer->compute(1);
-            spdlog::info("deformation costs: {}", stopwatch);
+            //spdlog::info("deformation costs: {}", stopwatch);
             Vertices = deformer->getVertices();
             //std::cout << Vertices << std::endl;
 
@@ -275,6 +297,7 @@ int main(int argc, char *argv[])
                     Q,q               Switch to [place anchor points] mode
                     W,w               Switch to [place handle points] mode
                     E,e               Switch to [deformation] mode
+                    R,r               Rotate 45 degrees
                     U,u               Update deformation (run another iteration of solver)
                     Ctrl+Z            Undo
                     Ctrl+Shift+Z      Redo
@@ -300,6 +323,8 @@ int main(int argc, char *argv[])
                     
                     L_hat = add_constraints(lp.second, state.anchor_constraints, state.handle_constraints);
                     spdlog::info("handles:\n{}", state.handles);
+
+                    spdlog::info("rotation axis:\n {}", state.axis);
                 }
             }
         }
@@ -331,8 +356,7 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer &, int, int) -> bool {
         last_mouse = Eigen::RowVector3f(viewer.current_mouse_x, viewer.core().viewport(3) - viewer.current_mouse_y, 0);
-        // TODO: lasso selection, idea -> select all vetrices in the range of [x,y]
-        // of (current_mouse - last_mouse), then do the following
+        // TODO: lasso selection, idea -> select all vetrices in the range of [x,y] of (current_mouse - last_mouse)
         if (state.mode != Mode::kDeform)
         {
             // add vertex by finding closest point on mesh to mouse position
@@ -347,7 +371,6 @@ int main(int argc, char *argv[])
                 int idx_v = Faces(face_id, max_coeff);
                 Eigen::RowVector3d new_coor = Vertices.row(idx_v);
 
-                // TODO: invoke ImGuizmo
                 if (state.mode == Mode::kPlacingAnchors)
                 {
                     if (state.anchors.size() == 0 ||
@@ -365,7 +388,6 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                // TODO: invoke ImGuizmo
                 if (state.mode == Mode::kPlacingHandles)
                 {
                     if (state.handles.size() == 0 ||
@@ -381,6 +403,14 @@ int main(int argc, char *argv[])
                         constraintsChange = true;
                     }
                 }
+
+                if (state.mode == Mode::kSetRotationAxis)
+                {
+                    state.axis.conservativeResize(state.axis.rows() + 1, 3);
+                    // Snap to closest vertex on hit face
+                    state.axis.row(state.axis.rows() - 1) = new_coor;
+                }
+
                 update();
                 return true;
             }
@@ -440,6 +470,12 @@ int main(int argc, char *argv[])
         switch (key)
         {
         // Switch modes
+        case 'A':
+        case 'a': {
+            state.mode = Mode::kSetRotationAxis;
+            spdlog::info("Mode: [Setting Rotation Axis]");
+            break;
+        }
         case 'Q':
         case 'q': {
             state.mode = Mode::kPlacingAnchors;
@@ -457,7 +493,6 @@ int main(int argc, char *argv[])
             state.mode = Mode::kDeform;
             spdlog::info("Mode: [Deformation]");
             spdlog::info("Precomputation Begins");
-
 
             fixedPts.clear();
             int chi; // constraint - handle - i
@@ -480,6 +515,24 @@ int main(int argc, char *argv[])
 
             break;
         }
+        case 'R':
+        case 'r': {
+            axis_points.clear();
+            if (state.axis.rows() == 2)
+            {
+                Eigen::Vector3d unit_vector = state.axis.row(0) - state.axis.row(1);
+                //spdlog::info("unit_vector: {}", unit_vector.normalized());
+                Eigen::Matrix3d rodrigue_matrix = calculate_rodrigue_matrix(45, unit_vector.normalized());
+                //spdlog::info("r_matrix_row: {}", rodrigue_matrix);
+                //state.handle_constraints *= rodrigue_matrix;
+                state.handles.resize(state.handles.rows(),3);
+                state.handles *= rodrigue_matrix;
+                
+                update();
+                return true;
+            }
+        }
+
         // Will just trigger a update
         case 'U':
         case 'u': {
