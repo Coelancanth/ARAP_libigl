@@ -25,7 +25,7 @@ void arapDeformer::setConstrainedPoints(const std::vector<int> &fixedPt) {
     fixedPts = fixedPt;
     spdlog::info("creating laplacian (sparse QR)");
     MatrixLConstructor lconstr (vertices, faces, adjList, wt, fixedPts);
-    laplacianMatQR.compute(lconstr.laplacianMat);
+    laplacianMatSolver.compute(lconstr.laplacianMat);
 
 }
 
@@ -39,7 +39,7 @@ void arapDeformer::compute(int iter) {
     Eigen::MatrixXd pos;
     Eigen::MatrixXd& posprime = this->result; // this->result = posprime;
     rot = rotationUpdateStep(vertices, faces, adjList, vertices, wt);
-    posprime = positionUpdateStep(laplacianMatQR, fixedPts, fixedPositions,
+    posprime = positionUpdateStep(laplacianMatSolver, fixedPts, fixedPositions,
                                   vertices, faces, adjList, rot, wt);
 
     for (int i = 1; i < iter; i++)
@@ -48,7 +48,7 @@ void arapDeformer::compute(int iter) {
         rot = rotationUpdateStep(vertices, faces, adjList, posprime, wt);
 
         pos = posprime;
-        posprime = positionUpdateStep(laplacianMatQR, fixedPts, fixedPositions,
+        posprime = positionUpdateStep(laplacianMatSolver, fixedPts, fixedPositions,
                                       vertices, faces, adjList, rot, wt);
     }
 

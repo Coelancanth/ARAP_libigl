@@ -108,7 +108,7 @@ std::vector<Eigen::Matrix3d> rotationUpdateStep(
     return result;
 }
 
-Eigen::MatrixXd positionUpdateStep(const Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> >  & laplacianMatQR,
+Eigen::MatrixXd positionUpdateStep(const Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>>   & laplacianMatQR,
                                    const std::vector<int>& fixedPts, const std::vector<Eigen::Vector3d>&  fixedPositions,
                                    const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&faces,
                                    const std::vector<std::vector<int>> &adjList,

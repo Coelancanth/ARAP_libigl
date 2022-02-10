@@ -4,7 +4,7 @@
 
 #ifndef ARAP_ARAPDEFORMER_H
 #define ARAP_ARAPDEFORMER_H
-
+#include<Eigen/SparseCholesky>
 #include "arapStuff.h"
 #include "spdlog/spdlog.h"
 class arapDeformer {
@@ -25,7 +25,7 @@ public:
     Eigen::MatrixXd getVertices() {return result;};
 private:
 
-    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> >   laplacianMatQR;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>>   laplacianMatSolver;
     std::vector<int> fixedPts;
     std::vector<Eigen::Vector3d>  fixedPositions;
     std::vector<std::vector<int>> adjList;
