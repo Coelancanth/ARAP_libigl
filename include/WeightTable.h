@@ -11,6 +11,7 @@
 #include "igl/adjacency_list.h"
 #include "exception"
 #include "spdlog/spdlog.h"
+#include "spdlog/stopwatch.h"
 class WeightTable
 {
 public:

@@ -1,6 +1,7 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include "spdlog/spdlog.h"
 #include "spdlog/fmt/ostr.h"
+#include "spdlog/stopwatch.h"
 #include <igl/project.h>
 #include <igl/unproject.h>
 #include <igl/unproject_onto_mesh.h>
@@ -20,6 +21,7 @@
 #include <Eigen/SparseCholesky>
 #include <memory>
 #include "arapDeformer.h"
+
 
 
 enum class Mode
@@ -92,11 +94,12 @@ int main(int argc, char *argv[])
 
     bool constraintsChange = true;
 
+
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    //igl::readOFF("../meshes/bar1.off", Vertices, Faces);
-    igl::readOFF("../meshes/dino.off", Vertices, Faces);
+    igl::readOFF("../meshes/bar1.off", Vertices, Faces);
+    //igl::readOFF("../meshes/dino.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -189,9 +192,9 @@ int main(int argc, char *argv[])
             //deformer->setVertices(Vertices);
             deformer->updateConstraints(fixedPositions);
 
-            spdlog::info("defromign begins");
+            spdlog::stopwatch stopwatch;
             deformer->compute(1);
-            spdlog::info("defromign ends");
+            spdlog::info("deformation costs: {}", stopwatch);
             Vertices = deformer->getVertices();
             //std::cout << Vertices << std::endl;
 
@@ -396,7 +399,7 @@ int main(int argc, char *argv[])
             {
                 last_mouse(2) = control_pts(closet_pt_id, 2);
                 push_undo();
-                update();
+                //update();
                 // spdlog::info("")
                 return true;
             }
@@ -415,14 +418,15 @@ int main(int argc, char *argv[])
             igl::unproject(last_mouse, viewer.core().view, viewer.core().proj, viewer.core().viewport, last_scene);
             state.handles.rowwise() += (drag_scene - last_scene).cast<double>();
             last_mouse = drag_mouse;
-            //update();
+            update();
             return true;
         }
         return false;
     };
 
     viewer.callback_mouse_up = [&](igl::opengl::glfw::Viewer &, int, int) -> bool {
-        update();
+        //spdlog::info("mouse_up");
+        //update();
         closet_pt_id = -1;
         return false;
     };

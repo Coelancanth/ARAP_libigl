@@ -5,13 +5,12 @@
 #include "arapDeformer.h"
 #include "WeightTable.h"
 #include "MatrixLConstructor.h"
+#include "spdlog/stopwatch.h"
 arapDeformer::arapDeformer(const Eigen::MatrixXi &sourcefaces, const Eigen::MatrixXd sourcevert)
     : faces(sourcefaces), vertices(sourcevert), wt(vertices, faces, adjList) {
     spdlog::info("creating adj matrix");
     igl::adjacency_list(faces, adjList, false);
     spdlog::info("creating weight table");
-
-
 }
 
 
@@ -38,9 +37,13 @@ void arapDeformer::compute(int iter) {
     std::vector<Eigen::Matrix3d> rot;
     Eigen::MatrixXd pos;
     Eigen::MatrixXd& posprime = this->result; // this->result = posprime;
+    spdlog::stopwatch sw0;
     rot = rotationUpdateStep(vertices, faces, adjList, vertices, wt);
+    spdlog::info("rotation_update costs: {}", sw0);
+    spdlog::stopwatch sw1;
     posprime = positionUpdateStep(laplacianMatQR, fixedPts, fixedPositions,
                                   vertices, faces, adjList, rot, wt);
+    spdlog::info("position_update costs: {}", sw1);
 
     for (int i = 1; i < iter; i++)
     {
