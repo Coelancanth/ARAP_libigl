@@ -95,7 +95,8 @@ int main(int argc, char *argv[])
     /* -------------------------------------------------------------------------- */
     /*                                   Data IO                                  */
     /* -------------------------------------------------------------------------- */
-    igl::readOFF("../meshes/bar1.off", Vertices, Faces);
+    //igl::readOFF("../meshes/bar1.off", Vertices, Faces);
+    igl::readOFF("../meshes/dino.off", Vertices, Faces);
     //igl::readOFF("../meshes/test_mesh.off", Vertices, Faces);
     igl::opengl::glfw::Viewer viewer;
 
@@ -170,25 +171,27 @@ int main(int argc, char *argv[])
             int chi; // constraint - handle - i
             for (chi = 0; chi < state.handles.rows(); chi++)
             {
-                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
-                spdlog::info ("its content: {}" , state.handles.row(chi));
+                //spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                //spdlog::info ("its content: {}" , state.handles.row(chi));
 
                 fixedPositions.push_back(state.handles.row(chi));
             }
             int cai;
             for (cai = 0; cai < state.anchors.rows(); cai++)
             {
-                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
-                spdlog::info ("its content: {}" , state.anchors.row(cai));
+                //spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                //spdlog::info ("its content: {}" , state.anchors.row(cai));
 
                 fixedPositions.push_back(state.anchors.row(cai));
 
             }
 
-            deformer->setVertices(Vertices);
+            //deformer->setVertices(Vertices);
             deformer->updateConstraints(fixedPositions);
 
-            deformer->compute(2);
+            spdlog::info("defromign begins");
+            deformer->compute(1);
+            spdlog::info("defromign ends");
             Vertices = deformer->getVertices();
             //std::cout << Vertices << std::endl;
 
@@ -373,10 +376,8 @@ int main(int argc, char *argv[])
                         state.handle_constraints.emplace_back(state.handles.rows() - 1, idx_v, 1);
                         state.handleIndices.push_back(idx_v);
                         constraintsChange = true;
-
                     }
                 }
-                
                 update();
                 return true;
             }
@@ -408,20 +409,20 @@ int main(int argc, char *argv[])
         // apply_displacement(last_mouse, closet_pt_id, state);
         if (closet_pt_id != -1)
         {
-            Eigen::RowVector3f drag_mouse(viewer.current_mouse_x, viewer.core().viewport(3) - viewer.current_mouse_y,
-                                          last_mouse(2));
+            Eigen::RowVector3f drag_mouse(viewer.current_mouse_x, viewer.core().viewport(3) - viewer.current_mouse_y, last_mouse(2));
             Eigen::RowVector3f drag_scene, last_scene;
             igl::unproject(drag_mouse, viewer.core().view, viewer.core().proj, viewer.core().viewport, drag_scene);
             igl::unproject(last_mouse, viewer.core().view, viewer.core().proj, viewer.core().viewport, last_scene);
             state.handles.rowwise() += (drag_scene - last_scene).cast<double>();
             last_mouse = drag_mouse;
-            update();
+            //update();
             return true;
         }
         return false;
     };
 
     viewer.callback_mouse_up = [&](igl::opengl::glfw::Viewer &, int, int) -> bool {
+        update();
         closet_pt_id = -1;
         return false;
     };
@@ -449,7 +450,6 @@ int main(int argc, char *argv[])
         }
         case 'E':
         case 'e': {
-            // TODO: Encapsulate them into function
             state.mode = Mode::kDeform;
             spdlog::info("Mode: [Deformation]");
             spdlog::info("Precomputation Begins");
@@ -459,26 +459,18 @@ int main(int argc, char *argv[])
             int chi; // constraint - handle - i
             for (chi = 0; chi < state.handles.rows(); chi++)
             {
-                spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
+                //spdlog::info ("processing vertex {} as constraint handle", state.handleIndices[chi]);
                 fixedPts.push_back(state.handleIndices[chi]);
             }
             int cai;
             for (cai = 0; cai < state.anchors.rows(); cai++)
             {
-                spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
+                //spdlog::info ("processing vertex {} as constraint anchor", state.anchorIndices[cai]);
                 fixedPts.push_back(state.anchorIndices[cai]);
-
             }
 
-
             deformer->setConstrainedPoints(fixedPts);
-
             spdlog::info("Precomputation Ends");
-
-
-
-
-
 
             return true;
 

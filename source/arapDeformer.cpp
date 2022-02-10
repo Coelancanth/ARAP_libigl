@@ -17,8 +17,8 @@ arapDeformer::arapDeformer(const Eigen::MatrixXi &sourcefaces, const Eigen::Matr
 
 void arapDeformer::setVertices(const Eigen::MatrixXd &sourcevert) {
     vertices = sourcevert;
-    spdlog::info("creating weight table");
-    wt = WeightTable(vertices, faces, adjList);
+    //spdlog::info("creating weight table");
+    //wt = WeightTable(vertices, faces, adjList);
 }
 
 void arapDeformer::setConstrainedPoints(const std::vector<int> &fixedPt) {

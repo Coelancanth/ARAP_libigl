@@ -26,7 +26,7 @@ WeightTable::WeightTable(const Eigen::MatrixXd& vertices, const Eigen::MatrixXi&
 
     // to save some time, I use this approach:
     // for each triangle
-    //  for each edge in triganle:
+    //  for each edge in triangle:
     //   let i,j be its 2 vertices
     //     weight[i,j] and weight[j,i] += 0.5cot(angle opposite of edge)
     useCotanWeight = true;
